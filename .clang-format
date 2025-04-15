@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+
+AlwaysBreakAfterReturnType: TopLevel
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+
+# Optional: tweak these for personal taste
+BreakBeforeBraces: Attach
+ColumnLimit: 80 
+AllowShortFunctionsOnASingleLine: None
