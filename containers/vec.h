@@ -105,11 +105,11 @@ _lc_join(__vec_t, reverse)(__vec_t *vec) {
 }
 
 static inline void
-_lc_join(__vec_t, qsort)(__vec_t *vec, int (*cmp)(T *, T *)) {
+_lc_join(__vec_t, qsort)(__vec_t *vec, int (*cmp)(const T *, const T *)) {
 }
 
 static inline void
-_lc_join(__vec_t, msort)(__vec_t *vec, int (*cmp)(T *, T *)) {
+_lc_join(__vec_t, msort)(__vec_t *vec, int (*cmp)(const T *, const T *)) {
 }
 
 static inline __vec_t
