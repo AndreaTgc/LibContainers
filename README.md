@@ -33,10 +33,15 @@ You instantiate containers per-type with macros:
 
 // hash_str and eq_str are user defined functions
 
+// example of a clone function to prevent move-on-insert
+char* clone_str(const char* s){
+    return strdup(s);
+}
+
 int main(void){
   str_node_set set = {0};
-  str_node_set_init(&set, 128, hash_str, eq_str);
-  str_node_set_insert(&set, strdup("hello"));
+  str_node_set_init(&set, 128, hash_str, eq_str, clone_str);
+  str_node_set_insert(&set, "hello");
   if(str_node_set_contains(&set, "hello") == false) {
     printf("Whoops! something went wrong\n");
     return 1;
