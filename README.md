@@ -31,14 +31,18 @@ You instantiate containers per-type with macros:
 // want to use your type as prefix (does not work with pointers)
 #include "containers/node_set.h"
 
+// hash_str and eq_str are user defined functions
+
 int main(void){
   str_node_set set = {0};
   str_node_set_init(&set, 128, hash_str, eq_str);
   str_node_set_insert(&set, strdup("hello"));
   if(str_node_set_contains(&set, "hello") == false) {
     printf("Whoops! something went wrong\n");
+    return 1;
   } else {
     printf("Everything worked as expected\n");
+    return 0;
   }
 }
 ```
