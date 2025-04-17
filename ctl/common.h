@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /*******************************/
 /*      PUBLIC MACROS          */
@@ -36,6 +37,6 @@
 
 #define ___cat(a, b) a##b
 #define ___concat(a, b) ___cat(a, b)
-#define ___join(a, b) ___concat(a, ___concat(_, b))
+#define _lc_join(a, b) ___concat(a, ___concat(_, b))
 
 #endif // COMMON_H_

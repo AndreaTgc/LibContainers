@@ -1,20 +1,15 @@
-#ifndef _LIST_H_
-#define _LIST_H_
-
 #include "common.h"
-#include <assert.h>
-#include <stdlib.h>
 
 #ifndef T
 #define T int
 #endif // T
 
-#ifndef ___list_prefix
-#define ___list_prefix T
-#endif // ___list_prefix
+#ifndef _lc_list_pfx
+#define _lc_list_pfx T
+#endif // _lc_list_pfx
 
-#define __lnode_t ___join(___list_prefix, node)
-#define __list_t ___join(___list_prefix, list)
+#define __lnode_t _lc_join(_lc_list_pfx, node)
+#define __list_t _lc_join(_lc_list_pfx, list)
 
 typedef struct __lnode_t {
   struct __lnode_t *prev;
@@ -29,7 +24,7 @@ typedef struct __list_t {
 } __list_t;
 
 static inline void
-___join(__list_t, add_tail)(__list_t *l, T el) {
+_lc_join(__list_t, add_tail)(__list_t *l, T el) {
   if (l->tail == NULL) {
     // Adding the first element to the list
     __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
@@ -50,7 +45,7 @@ ___join(__list_t, add_tail)(__list_t *l, T el) {
 }
 
 static inline void
-___join(__list_t, add_head)(__list_t *l, T el) {
+_lc_join(__list_t, add_head)(__list_t *l, T el) {
   if (l->head == NULL) {
     // Adding the first element to the list
     __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
@@ -71,7 +66,7 @@ ___join(__list_t, add_head)(__list_t *l, T el) {
 }
 
 static inline void
-___join(__list_t, pop_tail)(__list_t *l, T el) {
+_lc_join(__list_t, pop_tail)(__list_t *l, T el) {
   if (!l->tail)
     return;
   if (l->drop)
@@ -82,7 +77,7 @@ ___join(__list_t, pop_tail)(__list_t *l, T el) {
 }
 
 static inline void
-___join(__list_t, pop_head)(__list_t *l, T el) {
+_lc_join(__list_t, pop_head)(__list_t *l, T el) {
   if (!l->head)
     return;
   if (l->drop)
@@ -93,5 +88,3 @@ ___join(__list_t, pop_head)(__list_t *l, T el) {
 }
 
 #undef T
-
-#endif // _LIST_H_
