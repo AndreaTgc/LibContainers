@@ -10,6 +10,10 @@
 // by passing your own equality functions to your 'init' call
 // [4] Ensures pointer stability (even after rehashing)
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #ifndef T
 #define T int
 #endif // T
@@ -43,26 +47,26 @@ typedef struct __set_t {
   uint64_t hash_or;
   uint64_t hash_and;
   size_t num_erases;
+  size_t max_probe;
 #endif // _lc_profile_enabled
   __node_t **buckets;
-  uint64_t (*hash)(const T *);
+  uint64_t (*hash)(T *);
   void (*drop)(T *);
-  bool (*eq)(const T *, const T *);
-  T (*clone)(const T *);
+  bool (*eq)(T *, T *);
+  T (*clone)(T *);
 } __set_t;
 
 // Basic equality function used as default if the user doesn't provide
 // a custom one
 static inline bool
-_lc_join(T, fallback_eq)(const T *a, const T *b) {
+_lc_join(__set_t, fallback_eq)(T *a, T *b) {
   return *a == *b;
 }
 
 static inline void
 _lc_join(__set_t, init)(__set_t *s, size_t initial_capacity,
-                        uint64_t (*hash)(const T *), void (*drop)(T *),
-                        bool (*eq)(const T *, const T *),
-                        T (*clone)(const T *)) {
+                        uint64_t (*hash)(T *), void (*drop)(T *),
+                        bool (*eq)(T *, T *), T (*clone)(T *)) {
   ASSERT((s != NULL), "Trying to call 'init' on a NULL set");
   ASSERT((hash != NULL), "A hash function is required for set initialization");
   s->size = 0;
@@ -70,16 +74,19 @@ _lc_join(__set_t, init)(__set_t *s, size_t initial_capacity,
   s->hash = hash;
   s->drop = drop;
   s->clone = clone;
-  s->eq = eq == NULL ? _lc_join(T, fallback_eq) : eq;
+  s->eq = eq == NULL ? _lc_join(__set_t, fallback_eq) : eq;
   s->buckets = (__node_t **)calloc(s->capacity, sizeof(__node_t *));
 #ifdef _lc_profile_enabled
   s->hash_or = 0;
   s->hash_and = 0;
+  s->num_erases = 0;
+  s->max_probe = 0;
 #endif // _lc_profile_enabled
 }
 
 static inline void
 _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
+  ASSERT((s != NULL), "Trying to call 'resize' on a NULL set\n");
   __node_t **new_buckets = (__node_t **)calloc(cap, sizeof(__node_t *));
   __node_t **old_buckets = s->buckets;
   for (size_t i = 0; i < s->capacity; i++) {
@@ -93,6 +100,7 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
       if (n2 == NULL) {
         new_buckets[idx] = n;
         new_buckets[idx]->next = NULL;
+        new_buckets[idx]->data = n->data;
       } else {
         __node_t *prv = NULL;
         while (n2 != NULL) {
@@ -101,6 +109,7 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
         }
         prv->next = n;
         prv->next->next = NULL;
+        prv->next->data = n->data;
       }
       n = next;
     }
@@ -110,6 +119,10 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
   free(old_buckets);
 }
 
+// Inserts a new key inside the set
+// resolves hash collisions by using open hashing (linked list)
+// the new element gets appended at the end of the list, preserving
+// the insertion order
 static inline bool
 _lc_join(__set_t, insert)(__set_t *s, T *key) {
   ASSERT((s != NULL), "Trying to call 'insert' on a NULL set\n");
@@ -148,9 +161,16 @@ _lc_join(__set_t, insert)(__set_t *s, T *key) {
   return true;
 }
 
+// Checks whether a key is present inside the set
+// returns true if the key is found
+// returns false if the key is NOT found
 static inline bool
 _lc_join(__set_t, contains)(__set_t *s, T *key) {
   uint64_t h = s->hash(key);
+#ifdef _lc_profile_enabled
+  s->hash_or |= h;
+  s->hash_and &= h;
+#endif // _lc_profile_enabled
   size_t index = (size_t)(h % s->capacity);
   __node_t *cur = s->buckets[index];
   while (cur) {
@@ -161,6 +181,38 @@ _lc_join(__set_t, contains)(__set_t *s, T *key) {
   return false;
 }
 
+// Returns the pointer to the key if it's found
+// inside the set, allowing the user to modify it
+static inline T *
+_lc_join(__set_t, get)(__set_t *s, T *key) {
+  uint64_t h = s->hash(key);
+#ifdef _lc_profile_enabled
+  s->hash_or |= h;
+  s->hash_and &= h;
+  size_t probe = 0;
+#endif // _lc_profile_enabled
+  size_t index = (size_t)(h % s->capacity);
+  __node_t *cur = s->buckets[index];
+  while (cur) {
+    if (s->eq(key, &cur->data)) {
+#ifdef _lc_profile_enabled
+      if (probe > s->max_probe)
+        s->max_probe = probe;
+#endif // _lc_profile_enabled
+      return &cur->data;
+    }
+#ifdef _lc_profile_enabled
+    probe++;
+#endif // _lc_profile_enabled
+    cur = cur->next;
+  }
+#ifdef _lc_profile_enabled
+  if (probe > s->max_probe)
+    s->max_probe = probe;
+#endif // _lc_profile_enabled
+  return NULL;
+}
+
 // Removes a key from the hash-set
 // Returns true if the element was in the set and it has been deleted
 // Returns false if the element was not in the set
@@ -168,6 +220,11 @@ static inline bool
 _lc_join(__set_t, remove)(__set_t *s, T *key) {
   uint64_t h = s->hash(key);
   size_t index = (size_t)(h % s->capacity);
+#ifdef _lc_profile_enabled
+  s->hash_or |= h;
+  s->hash_and &= h;
+  size_t probe = 0;
+#endif // _lc_profile_enabled
   __node_t *cur = s->buckets[index];
   __node_t *prv = NULL;
   while (cur) {
@@ -185,13 +242,22 @@ _lc_join(__set_t, remove)(__set_t *s, T *key) {
       }
       s->size--;
 #ifdef _lc_profile_enabled
+      if (probe > s->max_probe)
+        s->max_probe = probe;
       s->num_erases++;
 #endif // _lc_profile_enabled
       return true;
     }
+#ifdef _lc_profile_enabled
+    probe++;
+#endif // _lc_profile_enabled
     prv = cur;
     cur = cur->next;
   }
+#ifdef _lc_profile_enabled
+  if (probe > s->max_probe)
+    s->max_probe = probe;
+#endif // _lc_profile_enabled
   return false;
 }
 
@@ -220,14 +286,18 @@ _lc_join(__set_t, destroy)(__set_t *s) {
 }
 
 #ifdef _lc_profile_enabled
+// Prints a small set of data used to gather information
+// about the set performance. The performance of a hash set comes
+// down to a simple question: "How good is your hash function?"
+// the hash_or and hash_and values tells us if our hash function
+// has stuck bits, the ideal case is where hash_or tends to 0xFFFF
+// and hash_and to 0
 static inline void
 _lc_join(__set_t, print_profiling_data)(__set_t *s, const char *name) {
   fprintf(stdout, "[%s profiling data] set ptr = %p\n", name, (void *)s);
   fprintf(stdout, "[Running hash or] %04llx\n", s->hash_or);
-  fprintf(stdout, "[Running hash xor] %04llx\n", s->hash_and);
-  size_t total = 0;
-  size_t max = 0;
-  size_t c = 0;
+  fprintf(stdout, "[Running hash and] %04llx\n", s->hash_and);
+  size_t total = 0, max = 0, c = 0, empty = 0;
   for (size_t i = 0; i < s->capacity; i++) {
     c = 0;
     __node_t *n = s->buckets[i];
@@ -236,6 +306,8 @@ _lc_join(__set_t, print_profiling_data)(__set_t *s, const char *name) {
       c++;
       n = n->next;
     }
+    if (c == 0)
+      empty++;
     if (c > max)
       max = c;
   }
@@ -244,7 +316,11 @@ _lc_join(__set_t, print_profiling_data)(__set_t *s, const char *name) {
   fprintf(stdout, "[Maximum bucket length] %zu\n", max);
   fprintf(stdout, "[Average bucket length] %.3f\n",
           (float)total / (float)s->capacity);
-  fprintf(stdout, "[Num erases] %zu\n", s->num_erases);
+  fprintf(stdout, "[Number of empty buckets] %zu\n", empty);
+  fprintf(stdout, "[Average length of non empty buckets] %.3f\n",
+          (float)total / (float)(s->capacity - empty));
+      fprintf(stdout, "[Num erases] %zu\n", s->num_erases);
+  fprintf(stdout, "[Maximum probe length] %zu\n", s->max_probe);
 }
 #endif // _lc_profile_enabled
 
@@ -252,3 +328,7 @@ _lc_join(__set_t, print_profiling_data)(__set_t *s, const char *name) {
 #undef __node_t
 #undef __set_t
 #undef _lc_nodeset_pfx
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

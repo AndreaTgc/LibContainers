@@ -6,13 +6,13 @@ This library aims to bridge the gap between low-level C and the expressive, type
 
 ---
 
-## 🚀 Features
+## Features
 
 - **Type-safe generics** via macro instantiation
 
 ---
 
-## 🧠 Design Philosophy
+## Design Philosophy
 
 - _Type Safety:_ All containers are instantiated for user-defined types (like `int`, `char*`, or custom structs).
 - _Performance First:_ No unnecessary abstraction overhead.
@@ -20,34 +20,39 @@ This library aims to bridge the gap between low-level C and the expressive, type
 
 ---
 
-## 🔧 Usage
+## Usage
 
 You instantiate containers per-type with macros:
 
 ```c
-#define T char*
+#define T char *
 #define _lc_nodeset_pfx str
-// _lc_nodeset_pfx can be left out if you
-// want to use your type as prefix (does not work with pointers)
+#define _lc_profile_enabled
 #include "containers/node_set.h"
+#include <string.h>
 
-// hash_str and eq_str are user defined functions
-
-// example of a clone function to prevent move-on-insert
-char* clone_str(const char* s){
-    return strdup(s);
+uint64_t hash(char **s) {
+    return (uint64_t) strlen(*s);
 }
 
-int main(void){
-  str_node_set set = {0};
-  str_node_set_init(&set, 128, hash_str, eq_str, clone_str);
-  str_node_set_insert(&set, "hello");
-  if(str_node_set_contains(&set, "hello") == false) {
-    printf("Whoops! something went wrong\n");
-    return 1;
+bool eq(char **s1, char **s2) {
+  return strcmp(*s1, *s2) == 0;
+}
+
+char* clone(char **s) {
+  return strdup(*s);
+}
+
+int main(void) {
+  str_node_set s = {0};
+  str_node_set_init(&s, 32, hash, NULL, eq, clone);
+  str_node_set_insert(&s, &(char *){"Hello"});
+  if(str_node_set_contains(&s, &(char*){"Hello"})){
+      printf("Everything went well!\n");
   } else {
-    printf("Everything worked as expected\n");
-    return 0;
+      printf("What happened here?\n");
   }
+  str_node_set_print_profiling_data(&s, "TestSet");
+  return 0;
 }
 ```
