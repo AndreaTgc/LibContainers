@@ -1,5 +1,14 @@
 #include "common.h"
 
+// @Author: Andrea Colombo (AndreaTgc)
+// Implementation of a hash table inspired by C++'s std::unordered_map
+// Implementation details:
+// [1] Handles collisions with open hashing (linked lists)
+// [2] Offers pointer stability, even after resizing
+// [3] Takes full ownership of the key and values (eg. if you use char* as
+// the key, you do not deallocate the string after calling 'insert', the map
+// will handle the string deallocation when calling 'remove' or 'destroy')
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -21,6 +30,8 @@ extern "C" {
 
 #define __node_t _lc_join(_lc_nodemap_pfx, node)
 
+// Node using in linked list to handle hash
+// collisions (open hashing)
 typedef struct __node_t {
   K key;
   V value;
@@ -85,6 +96,7 @@ _lc_join(__map_t, insert)(__map_t *map, K key, V val) {
     map->buckets[index] = new_node;
   else
     prv->next = new_node;
+  map->size++;
   return true;
 }
 
@@ -102,7 +114,7 @@ _lc_join(__map_t, contains)(__map_t *map, K key) {
 }
 
 static inline V *
-_lc_join(__map_t, get)(__map_t *map, K key) {
+_lc_join(__map_t, find)(__map_t *map, K key) {
   uint64_t h = map->hash(key);
   size_t index = (size_t)(h % map->capacity);
   __node_t *cur = map->buckets[index];
@@ -112,6 +124,16 @@ _lc_join(__map_t, get)(__map_t *map, K key) {
     cur = cur->next;
   }
   return NULL;
+}
+
+static inline bool
+_lc_join(__map_t, get)(__map_t *map, K key, V *out) {
+  V *tmp = _lc_join(__map_t, find)(map, key);
+  if (tmp) {
+    *out = *tmp;
+    return true;
+  } else
+    return false;
 }
 
 static inline bool
@@ -132,6 +154,7 @@ _lc_join(__map_t, remove)(__map_t *map, K key) {
       if (map->drop_val)
         map->drop_val(cur->value);
       free(cur);
+      map->size--;
       return true;
     }
     prv = cur;
@@ -160,6 +183,12 @@ _lc_join(__map_t, destroy)(__map_t *map) {
   free(map->buckets);
   memset(map, 0, sizeof(*map));
 }
+
+#undef __node_t
+#undef __map_t
+#undef K
+#undef K
+#undef _lc_nodemap_pfx
 
 #ifdef __cplusplus
 }

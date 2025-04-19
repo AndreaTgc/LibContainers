@@ -66,8 +66,8 @@ static inline void
 _lc_join(__set_t, init)(__set_t *s, size_t initial_capacity,
                         uint64_t (*hash)(T), void (*drop)(T),
                         bool (*eq)(T, T)) {
-  ASSERT((s != NULL), "Trying to call 'init' on a NULL set");
-  ASSERT((hash != NULL), "A hash function is required for set initialization");
+  ASSERT((s != NULL), "Trying to call 'init' on a NULL set\n");
+  ASSERT((hash != NULL), "A hash function is required for set initialization\n");
   s->size = 0;
   s->capacity = initial_capacity == 0 ? 32 : initial_capacity;
   s->hash = hash;
@@ -182,7 +182,7 @@ _lc_join(__set_t, contains)(__set_t *s, T key) {
 // Returns the pointer to the key if it's found
 // inside the set, allowing the user to modify it
 static inline T *
-_lc_join(__set_t, get)(__set_t *s, T key) {
+_lc_join(__set_t, find)(__set_t *s, T key) {
   uint64_t h = s->hash(key);
 #ifdef _lc_profile_enabled
   s->hash_or |= h;

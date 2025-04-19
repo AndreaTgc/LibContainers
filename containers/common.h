@@ -2,9 +2,9 @@
 #define _COMMON_H_
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <strings.h>
 
 /*******************************/
@@ -17,7 +17,8 @@
   do {                                                                         \
     if (!cond) {                                                               \
       fprintf(stderr, "[ASSERT FAIL] " __VA_ARGS__);                           \
-      fprintf(stderr, "[FAILED CONDITION] %s\n", #cond);                       \
+      fprintf(stderr, "[FAILED CONDITION] %s at [file] %s [line] %d\n", #cond, \
+              __FILE__, __LINE__);                                             \
       exit(1);                                                                 \
     }                                                                          \
   } while (0)

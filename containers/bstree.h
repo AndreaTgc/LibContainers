@@ -19,13 +19,12 @@ typedef struct __bsnode_t {
 typedef struct __bstree_t {
   size_t size;
   __bsnode_t *root;
-  int (*cmp)(T *, T *);
-  void (*dropfn)(T *);
+  int (*cmp)(T, T);
+  void (*dropfn)(T);
 } __bstree_t;
 
 static inline void
-_lc_join(__bstree_t, init)(__bstree_t *t, int (*cmp)(T *, T *),
-                           void (*drop)(T *)) {
+_lc_join(__bstree_t, init)(__bstree_t *t, int (*cmp)(T, T), void (*drop)(T)) {
   ASSERT((t != NULL), "Trying to init a NULL binary search tree\n");
   t->size = 0;
   t->root = NULL;
@@ -36,13 +35,13 @@ _lc_join(__bstree_t, init)(__bstree_t *t, int (*cmp)(T *, T *),
 }
 
 static inline void
-_lc_join(__bstree_t, insert)(__bstree_t *t, T *data) {
+_lc_join(__bstree_t, insert)(__bstree_t *t, T data) {
   ASSERT((t != NULL), "Trying to insert into a NULL binary search tree\n");
   ASSERT((t->cmp != NULL),
          "Trying to insert into a binary search tree without cmp function");
   __bsnode_t **n = &t->root;
   while (*n) {
-    int cmp = t->cmp(&(*n)->data, data);
+    int cmp = t->cmp((*n)->data, data);
     if (cmp < 0)
       n = &(*n)->r;
     else if (cmp > 0)
@@ -52,22 +51,22 @@ _lc_join(__bstree_t, insert)(__bstree_t *t, T *data) {
   }
   *n = (__bsnode_t *)malloc(sizeof(__bsnode_t));
   ASSERT((*n != NULL), "Failed to allocate new node for insertion");
-  (*n)->data = *data;
+  (*n)->data = data;
   (*n)->l = NULL;
   (*n)->r = NULL;
   t->size++;
 }
 
 static inline T *
-_lc_join(__bstree_t, find)(__bstree_t *t, T *data) {
+_lc_join(__bstree_t, find)(__bstree_t *t, T data) {
   ASSERT((t != NULL), "Trying to call find on a NULL tree\n");
   ASSERT((t->cmp != NULL),
          "Trying to call find on a tree with no cmp function\n");
   __bsnode_t *n = t->root;
   while (n) {
-    if (t->cmp(&n->data, data) == 0)
+    if (t->cmp(n->data, data) == 0)
       return &n->data;
-    if (t->cmp(&n->data, data) > 0)
+    if (t->cmp(n->data, data) > 0)
       n = n->l;
     else
       n = n->r;
@@ -76,17 +75,17 @@ _lc_join(__bstree_t, find)(__bstree_t *t, T *data) {
 };
 
 static inline bool
-_lc_join(__bstree_t, remove)(__bstree_t *t, T *data) {
+_lc_join(__bstree_t, remove)(__bstree_t *t, T data) {
   ASSERT((t != NULL), "Trying to call 'remove' on a NULL tree\n");
   ASSERT((t->cmp != NULL),
          "Trying to call 'remove' on a tree with no cmp function\n");
   __bsnode_t *n = t->root;
   while (n) {
-    if (t->cmp(&n->data, data) == 0) {
+    if (t->cmp(n->data, data) == 0) {
       // Remove the node from the tree
       return true;
     }
-    if (t->cmp(&n->data, data) > 0)
+    if (t->cmp(n->data, data) > 0)
       n = n->l;
     else
       n = n->r;
@@ -173,13 +172,13 @@ _lc_join(__bstree_t, visit_post_order)(__bstree_t *t, void (*visitor)(T *)) {
 }
 
 static inline void
-_lc_join(__bsnode_t, destroy_rec)(__bsnode_t *n, void (*drop)(T *)) {
+_lc_join(__bsnode_t, destroy_rec)(__bsnode_t *n, void (*drop)(T)) {
   if (n == NULL)
     return;
   _lc_join(__bsnode_t, destroy_rec)(n->l, drop);
   _lc_join(__bsnode_t, destroy_rec)(n->r, drop);
   if (drop)
-    drop(&n->data);
+    drop(n->data);
   free(n);
 }
 
