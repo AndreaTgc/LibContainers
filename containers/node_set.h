@@ -50,30 +50,28 @@ typedef struct __set_t {
   size_t max_probe;
 #endif // _lc_profile_enabled
   __node_t **buckets;
-  uint64_t (*hash)(T *);
-  void (*drop)(T *);
-  bool (*eq)(T *, T *);
-  T (*clone)(T *);
+  uint64_t (*hash)(T);
+  void (*drop)(T);
+  bool (*eq)(T, T);
 } __set_t;
 
 // Basic equality function used as default if the user doesn't provide
 // a custom one
 static inline bool
-_lc_join(__set_t, fallback_eq)(T *a, T *b) {
-  return *a == *b;
+_lc_join(__set_t, fallback_eq)(T a, T b) {
+  return a == b;
 }
 
 static inline void
 _lc_join(__set_t, init)(__set_t *s, size_t initial_capacity,
-                        uint64_t (*hash)(T *), void (*drop)(T *),
-                        bool (*eq)(T *, T *), T (*clone)(T *)) {
+                        uint64_t (*hash)(T), void (*drop)(T),
+                        bool (*eq)(T, T)) {
   ASSERT((s != NULL), "Trying to call 'init' on a NULL set");
   ASSERT((hash != NULL), "A hash function is required for set initialization");
   s->size = 0;
   s->capacity = initial_capacity == 0 ? 32 : initial_capacity;
   s->hash = hash;
   s->drop = drop;
-  s->clone = clone;
   s->eq = eq == NULL ? _lc_join(__set_t, fallback_eq) : eq;
   s->buckets = (__node_t **)calloc(s->capacity, sizeof(__node_t *));
 #ifdef _lc_profile_enabled
@@ -95,7 +93,7 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
     while (n != NULL) {
       next = n->next;
       // Insert the element into the new buckets
-      uint64_t idx = (size_t)s->hash(&n->data) % cap;
+      uint64_t idx = (size_t)s->hash(n->data) % cap;
       __node_t *n2 = new_buckets[idx];
       if (n2 == NULL) {
         new_buckets[idx] = n;
@@ -124,7 +122,7 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
 // the new element gets appended at the end of the list, preserving
 // the insertion order
 static inline bool
-_lc_join(__set_t, insert)(__set_t *s, T *key) {
+_lc_join(__set_t, insert)(__set_t *s, T key) {
   ASSERT((s != NULL), "Trying to call 'insert' on a NULL set\n");
   ASSERT((s->eq != NULL && s->hash != NULL),
          "Trying to call 'insert' on a set that's not correctly initialised\n");
@@ -140,7 +138,7 @@ _lc_join(__set_t, insert)(__set_t *s, T *key) {
     s->buckets[index] = (__node_t *)malloc(sizeof(__node_t));
     ASSERT((s->buckets[index] != NULL),
            "Failed to allocate first node inside bucket\n");
-    s->buckets[index]->data = s->clone ? s->clone(key) : *key;
+    s->buckets[index]->data = key;
     s->buckets[index]->next = NULL;
     s->size++;
     return true;
@@ -148,7 +146,7 @@ _lc_join(__set_t, insert)(__set_t *s, T *key) {
   __node_t *cur = s->buckets[index];
   __node_t *prev = NULL;
   while (cur != NULL) {
-    if (s->eq(&cur->data, key))
+    if (s->eq(cur->data, key))
       return false;
     prev = cur;
     cur = cur->next;
@@ -156,7 +154,7 @@ _lc_join(__set_t, insert)(__set_t *s, T *key) {
   prev->next = (__node_t *)malloc(sizeof(__node_t));
   ASSERT((prev->next != NULL), "Failed to allocate new node for hash set\n");
   prev->next->next = NULL;
-  prev->next->data = s->clone ? s->clone(key) : *key;
+  prev->next->data = key;
   s->size++;
   return true;
 }
@@ -165,7 +163,7 @@ _lc_join(__set_t, insert)(__set_t *s, T *key) {
 // returns true if the key is found
 // returns false if the key is NOT found
 static inline bool
-_lc_join(__set_t, contains)(__set_t *s, T *key) {
+_lc_join(__set_t, contains)(__set_t *s, T key) {
   uint64_t h = s->hash(key);
 #ifdef _lc_profile_enabled
   s->hash_or |= h;
@@ -174,7 +172,7 @@ _lc_join(__set_t, contains)(__set_t *s, T *key) {
   size_t index = (size_t)(h % s->capacity);
   __node_t *cur = s->buckets[index];
   while (cur) {
-    if (s->eq(key, &cur->data))
+    if (s->eq(key, cur->data))
       return true;
     cur = cur->next;
   }
@@ -184,7 +182,7 @@ _lc_join(__set_t, contains)(__set_t *s, T *key) {
 // Returns the pointer to the key if it's found
 // inside the set, allowing the user to modify it
 static inline T *
-_lc_join(__set_t, get)(__set_t *s, T *key) {
+_lc_join(__set_t, get)(__set_t *s, T key) {
   uint64_t h = s->hash(key);
 #ifdef _lc_profile_enabled
   s->hash_or |= h;
@@ -194,7 +192,7 @@ _lc_join(__set_t, get)(__set_t *s, T *key) {
   size_t index = (size_t)(h % s->capacity);
   __node_t *cur = s->buckets[index];
   while (cur) {
-    if (s->eq(key, &cur->data)) {
+    if (s->eq(key, cur->data)) {
 #ifdef _lc_profile_enabled
       if (probe > s->max_probe)
         s->max_probe = probe;
@@ -217,7 +215,7 @@ _lc_join(__set_t, get)(__set_t *s, T *key) {
 // Returns true if the element was in the set and it has been deleted
 // Returns false if the element was not in the set
 static inline bool
-_lc_join(__set_t, remove)(__set_t *s, T *key) {
+_lc_join(__set_t, remove)(__set_t *s, T key) {
   uint64_t h = s->hash(key);
   size_t index = (size_t)(h % s->capacity);
 #ifdef _lc_profile_enabled
@@ -228,16 +226,16 @@ _lc_join(__set_t, remove)(__set_t *s, T *key) {
   __node_t *cur = s->buckets[index];
   __node_t *prv = NULL;
   while (cur) {
-    if (s->eq(key, &cur->data)) {
+    if (s->eq(key, cur->data)) {
       if (prv == NULL) {
         s->buckets[index] = cur->next;
         if (s->drop)
-          s->drop(&cur->data);
+          s->drop(cur->data);
         free(cur);
       } else {
         prv->next = cur->next;
         if (s->drop)
-          s->drop(&cur->data);
+          s->drop(cur->data);
         free(cur);
       }
       s->size--;
@@ -277,7 +275,7 @@ _lc_join(__set_t, destroy)(__set_t *s) {
       to_free = cur;
       cur = cur->next;
       if (s->drop)
-        s->drop(&to_free->data);
+        s->drop(to_free->data);
       free(to_free);
     }
   }
@@ -319,7 +317,7 @@ _lc_join(__set_t, print_profiling_data)(__set_t *s, const char *name) {
   fprintf(stdout, "[Number of empty buckets] %zu\n", empty);
   fprintf(stdout, "[Average length of non empty buckets] %.3f\n",
           (float)total / (float)(s->capacity - empty));
-      fprintf(stdout, "[Num erases] %zu\n", s->num_erases);
+  fprintf(stdout, "[Num erases] %zu\n", s->num_erases);
   fprintf(stdout, "[Maximum probe length] %zu\n", s->max_probe);
 }
 #endif // _lc_profile_enabled

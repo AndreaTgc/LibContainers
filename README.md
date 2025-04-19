@@ -17,6 +17,7 @@ This library aims to bridge the gap between low-level C and the expressive, type
 - _Type Safety:_ All containers are instantiated for user-defined types (like `int`, `char*`, or custom structs).
 - _Performance First:_ No unnecessary abstraction overhead.
 - _Minimal Dependencies:_ Standard C11 only.
+- _Value Ownership:_ The containers take full ownership of the inserted values and are responsible for cleaning it up.
 
 ---
 
