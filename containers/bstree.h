@@ -6,10 +6,12 @@
 
 #ifndef _lc_bst_pfx
 #define _lc_bst_pfx T
+#define __bstree_t _lc_join(_lc_bst_pfx, bstree)
+#else
+#define __bstree_t _lc_bst_pfx
 #endif // _lc_bst_pfx
 
 #define __bsnode_t _lc_join(_lc_bst_pfx, bsnode)
-#define __bstree_t _lc_join(_lc_bst_pfx, bstree)
 
 typedef struct __bsnode_t {
   struct __bsnode_t *l, *r;

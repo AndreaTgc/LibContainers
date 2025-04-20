@@ -20,6 +20,9 @@ extern "C" {
 
 #ifndef _lc_nodeset_pfx
 #define _lc_nodeset_pfx T
+#define __set_t _lc_join(_lc_nodeset_pfx, node_set)
+#else
+#define __set_t _lc_nodeset_pfx
 #endif // _lc_nodeset_pfx
 
 #ifndef _lc_nodeset_lf
@@ -27,7 +30,6 @@ extern "C" {
 #endif // _lc_nodeset_lf
 
 #define __node_t _lc_join(_lc_nodeset_pfx, node)
-#define __set_t _lc_join(_lc_nodeset_pfx, node_set)
 
 // Generic node used for open hashing
 typedef struct __node_t {
@@ -76,7 +78,7 @@ _lc_join(__set_t, init)(__set_t *s, size_t initial_capacity,
   s->buckets = (__node_t **)calloc(s->capacity, sizeof(__node_t *));
 #ifdef _lc_profile_enabled
   s->hash_or = 0;
-  s->hash_and = 0;
+  s->hash_and = UINT64_MAX;
   s->num_erases = 0;
   s->max_probe = 0;
 #endif // _lc_profile_enabled
@@ -98,7 +100,7 @@ _lc_join(__set_t, rehash)(__set_t *s, size_t cap) {
       if (n2 == NULL) {
         new_buckets[idx] = n;
         new_buckets[idx]->next = NULL;
-        new_buckets[idx]->data = n->data;
+        // new_buckets[idx]->data = n->data;
       } else {
         __node_t *prv = NULL;
         while (n2 != NULL) {

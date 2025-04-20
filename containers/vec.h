@@ -6,9 +6,11 @@
 
 #ifndef _lc_vec_pfx
 #define _lc_vec_pfx T
+#define __vec_t _lc_join(_lc_vec_pfx, vec)
+#else
+#define __vec_t _lc_vec_pfx
 #endif // _lc_vec_pfx
 
-#define __vec_t _lc_join(_lc_vec_pfx, vec)
 
 typedef struct __vec_t {
   T *data;

@@ -21,6 +21,8 @@
 // we can probe 64 times into the control bytes basically for free. If we were
 // probing into the slots we wouln't be able to fit nearly as many slots into
 // the same L1 cache line
+// NOTE: This implementation doesn't ensure pointer stability, if you need that
+// you should use the implementation found in 'node_map.h' or 'node_set.h'
 
 #ifndef K
 #define K int
@@ -32,10 +34,12 @@
 
 #ifndef _lc_flatmap_pfx
 #define _lc_flatmap_pfx _lc_join(K, V)
+#define __map_t _lc_join(_lc_flatmap_pfx, flat_map)
+#else
+#define __map_t _lc_flatmap_pfx
 #endif // _lc_flatmap_pfx
 
 #define __entry_t _lc_join(_lc_flatmap_pfx, node)
-#define __map_t _lc_join(_lc_flatmap_pfx, map)
 
 typedef struct __entry_t {
   K key;
@@ -76,11 +80,85 @@ _lc_join(__map_t, init)(__map_t *map, size_t cap, uint64_t (*hash)(K),
   map->slots = (__entry_t *)(p + cap);
 }
 
+static inline bool
+_lc_join(__map_t, contains)(__map_t *map, K key) {
+  uint64_t hash = map->hash(key);
+  uint64_t h1 = hash >> 7;
+  uint8_t h2 = hash & 0x7F;
+  size_t index = (size_t)h1 % map->capacity;
+  while (true) {
+    if ((map->ctrl[index] & 0x80) == 0)
+      break;
+    if ((map->ctrl[index] & 0x7F) == h2) {
+      if (map->key_eq(map->slots[index].key, key))
+        return true;
+    }
+    index = (index + 1) % map->capacity;
+  }
+  return false;
+}
+
+static inline V *
+_lc_join(__map_t, find)(__map_t *map, K key) {
+  uint64_t hash = map->hash(key);
+  uint64_t h1 = hash >> 7;
+  uint8_t h2 = hash & 0x7F;
+  size_t index = (size_t)h1 % map->capacity;
+  for (;;) {
+    if ((map->ctrl[index] & 0x80) == 0)
+      break;
+    if ((map->ctrl[index] & 0x7F) == h2) {
+      if (map->key_eq(map->slots[index].key, key))
+        return &map->slots[index].value;
+    }
+    index = (index + 1) % map->capacity;
+  }
+  return NULL;
+}
+
+static inline bool
+_lc_join(__map_t, get)(__map_t *map, K key, V *out) {
+  V *t = _lc_join(__map_t, find)(map, key);
+  if (!t)
+    return false;
+  *out = *t;
+  return true;
+}
+
+static inline bool
+_lc_join(__map_t, insert)(__map_t *map, K key, V value) {
+  uint64_t hash = map->hash(key);
+  uint64_t h1 = hash >> 7;
+  uint8_t h2 = hash & 0x7F;
+  size_t index = (size_t)h1 % map->capacity;
+  for (;;) {
+    if (map->ctrl[index] == 0 || map->ctrl[index] == 0x7F) {
+      // Found an empty slot (0x00) or tombstone (0x7F)
+      map->ctrl[index] = 0 | h2 | 0x80;
+      map->slots[index].key = key;
+      map->slots[index].value = value;
+      return true;
+    }
+    if ((map->ctrl[index] & 0x7F) == h2) {
+      // Check if the key is already inside the map
+      if (map->key_eq(map->slots[index].key, key))
+        return false;
+    }
+    index = (index + 1) % map->capacity;
+  }
+}
+
 static inline void
 _lc_join(__map_t, destroy)(__map_t *map) {
   if (!map)
     return;
   for (size_t i = 0; i < map->capacity; i++) {
+    if (map->ctrl[i] & 0x80) {
+      if (map->drop_k)
+        map->drop_k(map->slots[i].key);
+      if (map->drop_v)
+        map->drop_v(map->slots[i].value);
+    }
   }
   free(map->ctrl); // Also frees slots
   memset(map, 0, sizeof(*map));

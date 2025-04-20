@@ -21,6 +21,10 @@ extern "C" {
 #define V int
 #endif // V
 
+#ifndef _lc_nodemap_lf
+#define _lc_nodemap_lf 0.8
+#endif // _lc_nodemap_lf
+
 #ifndef _lc_nodemap_pfx
 #define _lc_nodemap_pfx _lc_join(K, V)
 #define __map_t _lc_join(_lc_nodemap_pfx, node_map)
@@ -76,9 +80,47 @@ _lc_join(__map_t, init)(__map_t *map, size_t capacity, uint64_t (*hash)(K),
 #endif // _lc_profile_enabled
 }
 
+static inline void
+_lc_join(__map_t, rehash)(__map_t *map, size_t cap) {
+  ASSERT((map != NULL), "Trying to call 'resize' on a NULL map\n");
+  __node_t **new_buckets = (__node_t **)calloc(cap, sizeof(__node_t *));
+  __node_t **old_buckets = map->buckets;
+  for (size_t i = 0; i < map->capacity; i++) {
+    __node_t *cur = map->buckets[i];
+    __node_t *next = NULL;
+    while (cur) {
+      next = cur->next;
+      uint64_t new_idx = map->hash(cur->key) % cap;
+      __node_t *n = new_buckets[new_idx];
+      if (!n) {
+        new_buckets[new_idx] = cur;
+        new_buckets[new_idx]->next = NULL;
+      } else {
+        __node_t *prv = NULL;
+        while (n) {
+          prv = n;
+          n = n->next;
+        }
+        prv->next = cur;
+        prv->next->next = NULL;
+      }
+      cur = next;
+    }
+  }
+  map->buckets = new_buckets;
+  free(old_buckets);
+  map->capacity = cap;
+}
+
 static inline bool
 _lc_join(__map_t, insert)(__map_t *map, K key, V val) {
+  if ((float)map->size / (float)map->capacity > _lc_nodemap_lf)
+    _lc_join(__map_t, rehash)(map, map->capacity * 2);
   uint64_t h = map->hash(key);
+#ifdef _lc_profile_enabled
+  map->hash_or |= h;
+  map->hash_and &= h;
+#endif // _lc_profile_enabled
   size_t index = h % map->capacity;
   __node_t *cur = map->buckets[index];
   __node_t *prv = NULL;
@@ -155,6 +197,9 @@ _lc_join(__map_t, remove)(__map_t *map, K key) {
         map->drop_val(cur->value);
       free(cur);
       map->size--;
+#ifdef _lc_profile_enabled
+      map->num_erases++;
+#endif // _lc_profile_enabled
       return true;
     }
     prv = cur;
@@ -187,7 +232,7 @@ _lc_join(__map_t, destroy)(__map_t *map) {
 #undef __node_t
 #undef __map_t
 #undef K
-#undef K
+#undef V
 #undef _lc_nodemap_pfx
 
 #ifdef __cplusplus

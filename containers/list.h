@@ -6,10 +6,12 @@
 
 #ifndef _lc_list_pfx
 #define _lc_list_pfx T
+#define __list_t _lc_join(_lc_list_pfx, list)
+#else
+#define __list_t _lc_list_pfx
 #endif // _lc_list_pfx
 
 #define __lnode_t _lc_join(_lc_list_pfx, node)
-#define __list_t _lc_join(_lc_list_pfx, list)
 
 typedef struct __lnode_t {
   struct __lnode_t *prev;
