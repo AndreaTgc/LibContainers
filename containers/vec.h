@@ -1,5 +1,9 @@
 #include "common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #ifndef T
 #define T int
 #endif // T
@@ -11,7 +15,6 @@
 #define __vec_t _lc_vec_pfx
 #endif // _lc_vec_pfx
 
-
 typedef struct __vec_t {
   T *data;
   void (*drop)(T *);
@@ -19,73 +22,88 @@ typedef struct __vec_t {
   size_t capacity;
 } __vec_t;
 
-/**
- * Initializes the vector with an initial capacity (defaults to 16 if parameter
- * is 0) and an optional 'drop' function used to deallocate the elements when
- * destroying the vector
- */
 static inline void
-_lc_join(__vec_t, init)(__vec_t *vec, size_t icap, void (*dropfn)(T *)) {
-  ASSERT((vec != NULL), "Trying to init a NULL vector\n");
-  vec->size = 0;
-  vec->capacity = icap == 0 ? 16 : icap;
-  vec->data = (T *)calloc(sizeof(T), vec->capacity);
-  vec->drop = dropfn;
+_lc_join(__vec_t, init)(__vec_t *self, size_t icap, void (*dropfn)(T *)) {
+  ASSERT((self != NULL), "Trying to init a NULL vector\n");
+  self->size = 0;
+  self->capacity = icap == 0 ? 16 : icap;
+  self->data = (T *)calloc(sizeof(T), self->capacity);
+  self->drop = dropfn;
 }
 
 static inline T *
-_lc_join(__vec_t, at)(__vec_t *vec, size_t index) {
-  ASSERT((vec != NULL), "Trying to call 'at' on a NULL vector\n");
-  if (index >= vec->size)
+_lc_join(__vec_t, at)(__vec_t *self, size_t index) {
+  ASSERT((self != NULL), "Trying to call 'at' on a NULL vector\n");
+  if (index >= self->size)
     return NULL;
-  return &vec->data[index];
+  return &self->data[index];
 }
 
 static inline void
-_lc_join(__vec_t, set)(__vec_t *vec, size_t index, T *data) {
-  ASSERT((vec != NULL), "Trying to call 'set' on a NULL vector\n");
-  T *el = _lc_join(__vec_t, at)(vec, index);
+_lc_join(__vec_t, set)(__vec_t *self, size_t index, T data) {
+  ASSERT((self != NULL), "Trying to call 'set' on a NULL vector\n");
+  T *el = _lc_join(__vec_t, at)(self, index);
   if (!el)
     return;
-  if (vec->drop)
-    vec->drop(el);
-  *el = *data;
+  if (self->drop)
+    self->drop(el);
+  *el = data;
 }
 
 static inline void
-_lc_join(__vec_t, push_back)(__vec_t *vec, T el) {
-  ASSERT((vec != NULL), "Trying to call 'push_back' on a NULL vector\n");
-  if (vec->size == vec->capacity) {
-    vec->capacity = vec->capacity == 0 ? 16 : vec->capacity * 2;
-    vec->data = (T *)realloc(vec->data, sizeof(T) * vec->capacity);
+_lc_join(__vec_t, remove_at)(__vec_t *self, size_t index) {
+  if (index >= self->size)
+    return;
+  memmove(&self->data[index], &self->data[index + 1], self->size - index);
+  self->size--;
+}
+
+static inline void
+_lc_join(__vec_t, insert_at)(__vec_t *self, size_t index) {
+  if (index >= self->size)
+    return;
+  if (self->size == self->capacity) {
+    self->capacity = self->capacity == 0 ? 16 : self->capacity * 2;
+    self->data = (T *)realloc(self->data, sizeof(T) * self->capacity);
   }
-  vec->data[vec->size++] = el;
+  memmove(&self->data[index + 1], &self->data[index], self->size - index);
+  self->size++;
+}
+
+static inline void
+_lc_join(__vec_t, push_back)(__vec_t *self, T el) {
+  ASSERT((self != NULL), "Trying to call 'push_back' on a NULL vector\n");
+  if (self->size == self->capacity) {
+    self->capacity = self->capacity == 0 ? 16 : self->capacity * 2;
+    self->data = (T *)realloc(self->data, sizeof(T) * self->capacity);
+  }
+  self->data[self->size++] = el;
 }
 
 static inline T *
-_lc_join(__vec_t, pop_back)(__vec_t *vec) {
-  ASSERT((vec != NULL), "Trying to call 'pop_back' on a NULL vector\n");
-  if (vec->size == 0)
+_lc_join(__vec_t, pop_back)(__vec_t *self) {
+  ASSERT((self != NULL), "Trying to call 'pop_back' on a NULL vector\n");
+  if (self->size == 0)
     return NULL;
-  return &vec->data[--vec->size];
+  return &self->data[--self->size];
 }
 
 static inline T *
-_lc_join(__vec_t, first_match)(__vec_t *vec, int (*pred)(T)) {
-  ASSERT((vec != NULL), "Trying to call 'first_match' on a NULL vector\n");
-  for (size_t i = 0; i < vec->size; i++) {
-    if (pred(vec->data[i]) != 0)
-      return &vec->data[i];
+_lc_join(__vec_t, first_match)(__vec_t *self, int (*pred)(T)) {
+  ASSERT((self != NULL), "Trying to call 'first_match' on a NULL vector\n");
+  for (size_t i = 0; i < self->size; i++) {
+    if (pred(self->data[i]) != 0)
+      return &self->data[i];
   }
   return NULL;
 }
 
 static inline T *
-_lc_join(__vec_t, last_match)(__vec_t *vec, int (*pred)(T)) {
-  ASSERT((vec != NULL), "Trying to call 'last_match' on a NULL vector\n");
-  for (size_t i = vec->size; i >= 0; i--) {
-    if (pred(vec->data[i]) != 0)
-      return &vec->data[i];
+_lc_join(__vec_t, last_match)(__vec_t *self, int (*pred)(T)) {
+  ASSERT((self != NULL), "Trying to call 'last_match' on a NULL vector\n");
+  for (size_t i = self->size; i >= 0; i--) {
+    if (pred(self->data[i]) != 0)
+      return &self->data[i];
     if (i == 0)
       break;
   }
@@ -93,66 +111,68 @@ _lc_join(__vec_t, last_match)(__vec_t *vec, int (*pred)(T)) {
 }
 
 static inline void
-_lc_join(__vec_t, reverse)(__vec_t *vec) {
-  ASSERT((vec != NULL), "Trying to call 'reverse' on a NULL vector\n");
+_lc_join(__vec_t, reverse)(__vec_t *self) {
+  ASSERT((self != NULL), "Trying to call 'reverse' on a NULL vector\n");
   size_t a = 0;
-  size_t b = vec->size;
+  size_t b = self->size;
   while (a > b) {
-    T tmp = vec->data[a];
-    vec->data[a] = vec->data[b];
-    vec->data[b] = tmp;
+    T tmp = self->data[a];
+    self->data[a] = self->data[b];
+    self->data[b] = tmp;
     a++;
     b--;
   }
 }
 
 static inline void
-_lc_join(__vec_t, qsort)(__vec_t *vec, int (*cmp)(const T *, const T *)) {
-}
-
-static inline void
-_lc_join(__vec_t, msort)(__vec_t *vec, int (*cmp)(const T *, const T *)) {
-}
-
-static inline __vec_t
-_lc_join(__vec_t, filter)(__vec_t *vec, int (*pred)(T *)) {
-  ASSERT((vec != NULL), "Trying to call 'filter' on a NULL vector\n");
-  __vec_t new = {0};
-  _lc_join(__vec_t, init)(&new, vec->size, vec->drop);
-  for (size_t i = 0; i < new.capacity; i++) {
-    if (pred(&vec->data[i]) != 0)
-      _lc_join(__vec_t, push_back)(&new, vec->data[i]);
-  }
-  return new;
+_lc_join(__vec_t, qsort)(__vec_t *self, int (*cmp)(const T *, const T *)) {
+  qsort(self->data, self->size, sizeof(T),
+        (int (*)(const void *, const void *))cmp);
 }
 
 static inline __vec_t
-_lc_join(__vec_t, map)(__vec_t *vec, T (*transform)(T *)) {
-  ASSERT((vec != NULL), "Trying to call 'map' on a NULL vector\n");
-  __vec_t new = {0};
-  _lc_join(__vec_t, init)(&new, vec->size, vec->drop);
-  for (size_t i = 0; i < new.capacity; i++) {
-    _lc_join(__vec_t, push_back)(&new, transform(&vec->data[i]));
+_lc_join(__vec_t, filter)(__vec_t *self, bool (*pred)(T *)) {
+  ASSERT((self != NULL), "Trying to call 'filter' on a NULL vector\n");
+  __vec_t n = {0};
+  _lc_join(__vec_t, init)(&n, self->size, self->drop);
+  for (size_t i = 0; i < n.capacity; i++) {
+    if (pred(&self->data[i]))
+      _lc_join(__vec_t, push_back)(&n, self->data[i]);
   }
-  return new;
+  return n;
+}
+
+static inline __vec_t
+_lc_join(__vec_t, map)(__vec_t *self, T (*transform)(T *)) {
+  ASSERT((self != NULL), "Trying to call 'map' on a NULL vector\n");
+  __vec_t n = {0};
+  _lc_join(__vec_t, init)(&n, self->size, self->drop);
+  for (size_t i = 0; i < n.capacity; i++) {
+    _lc_join(__vec_t, push_back)(&n, transform(&self->data[i]));
+  }
+  return n;
 }
 
 static inline void
-_lc_join(__vec_t, destroy)(__vec_t *vec) {
-  if (!vec)
+_lc_join(__vec_t, destroy)(__vec_t *self) {
+  if (!self)
     return;
-  if (vec->drop) {
-    for (size_t i = 0; i < vec->size; i++) {
-      vec->drop(&vec->data[i]);
+  if (self->drop) {
+    for (size_t i = 0; i < self->size; i++) {
+      self->drop(&self->data[i]);
     }
   }
-  free(vec->data);
-  vec->size = 0;
-  vec->capacity = 0;
-  vec->drop = NULL;
-  vec->data = NULL;
+  free(self->data);
+  self->size = 0;
+  self->capacity = 0;
+  self->drop = NULL;
+  self->data = NULL;
 }
 
 #undef T
 #undef __vec_t
 #undef _lc_vec_pfx
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus

@@ -26,67 +26,75 @@ typedef struct __list_t {
 } __list_t;
 
 static inline void
-_lc_join(__list_t, add_tail)(__list_t *l, T el) {
-  if (l->tail == NULL) {
+_lc_join(__list_t, add_tail)(__list_t *self, T el) {
+  if (self->tail == NULL) {
     // Adding the first element to the list
     __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
     assert(n);
     n->data = el;
     n->next = NULL;
     n->prev = NULL;
-    l->head = n;
-    l->tail = n;
+    self->head = n;
+    self->tail = n;
     return;
   }
   __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
   assert(n);
   n->data = el;
   n->next = NULL;
-  n->prev = l->tail;
-  l->tail = n;
+  n->prev = self->tail;
+  self->tail = n;
 }
 
 static inline void
-_lc_join(__list_t, add_head)(__list_t *l, T el) {
-  if (l->head == NULL) {
+_lc_join(__list_t, add_head)(__list_t *self, T el) {
+  if (self->head == NULL) {
     // Adding the first element to the list
     __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
     assert(n);
     n->data = el;
     n->next = NULL;
     n->prev = NULL;
-    l->head = n;
-    l->tail = n;
+    self->head = n;
+    self->tail = n;
     return;
   }
   __lnode_t *n = (__lnode_t *)malloc(sizeof(__lnode_t));
   assert(n);
   n->data = el;
-  n->next = l->head;
+  n->next = self->head;
   n->prev = NULL;
-  l->head = n;
+  self->head = n;
 }
 
 static inline void
-_lc_join(__list_t, pop_tail)(__list_t *l, T el) {
-  if (!l->tail)
+_lc_join(__list_t, pop_tail)(__list_t *self) {
+  if (!self->tail)
     return;
-  if (l->drop)
-    l->drop(l->tail->data);
-  __lnode_t *n = l->tail;
-  l->tail = n->prev;
+  if (self->drop)
+    self->drop(self->tail->data);
+  __lnode_t *n = self->tail;
+  self->tail = n->prev;
   free(n);
 }
 
 static inline void
-_lc_join(__list_t, pop_head)(__list_t *l, T el) {
-  if (!l->head)
+_lc_join(__list_t, pop_head)(__list_t *self) {
+  if (!self->head)
     return;
-  if (l->drop)
-    l->drop(l->head->data);
-  __lnode_t *n = l->head;
-  l->head = n->next;
+  if (self->drop)
+    self->drop(self->head->data);
+  __lnode_t *n = self->head;
+  self->head = n->next;
   free(n);
+}
+
+static inline void
+_lc_join(__list_t, destroy)(__list_t *self) {
+  if (!self)
+    return;
+  while (self->head)
+    _lc_join(__list_t, pop_head)(self);
 }
 
 #undef T
