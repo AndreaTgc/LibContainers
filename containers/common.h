@@ -37,8 +37,8 @@
 /*     PRIVATE MACROS          */
 /*******************************/
 
-#define ___cat(a, b) a##b
-#define ___concat(a, b) ___cat(a, b)
-#define _lc_join(a, b) ___concat(a, ___concat(_, b))
+#define _lc_cat(a, b) a##b
+#define _lc_concat(a, b) _lc_cat(a, b)
+#define _lc_join(a, b) _lc_concat(a, _lc_concat(_, b))
 
 #endif // COMMON_H_
