@@ -10,22 +10,22 @@
 // by passing your own equality functions to your 'init' call
 // [4] Ensures pointer stability (even after rehashing)
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif // __cplusplus
 
-#ifndef T
+#if !defined(T)
 #define T int
 #endif // T
 
-#ifndef _lc_nodeset_pfx
+#if !defined(_lc_nodeset_pfx)
 #define _lc_nodeset_pfx T
 #define __set_t _lc_join(_lc_nodeset_pfx, node_set)
 #else
 #define __set_t _lc_nodeset_pfx
 #endif // _lc_nodeset_pfx
 
-#ifndef _lc_nodeset_lf
+#if !defined(_lc_nodeset_lf)
 #define _lc_nodeset_lf 0.8f
 #endif // _lc_nodeset_lf
 
@@ -40,7 +40,7 @@ typedef struct __node_t {
 typedef struct __set_t {
   size_t size;
   size_t capacity;
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   // This profiling data can be used for debugging and spotting
   // potential issues inside the hash function provided
   // Ideal case:
@@ -77,7 +77,7 @@ _lc_join(__set_t, init)(__set_t *self, size_t initial_capacity,
   self->drop = drop;
   self->eq = eq == NULL ? _lc_join(__set_t, fallback_eq) : eq;
   self->buckets = (__node_t **)calloc(self->capacity, sizeof(__node_t *));
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   self->hash_or = 0;
   self->hash_and = UINT64_MAX;
   self->num_erases = 0;
@@ -132,7 +132,7 @@ _lc_join(__set_t, insert)(__set_t *self, T key) {
   if (((float)self->size / (float)self->capacity) > _lc_nodeset_lf)
     _lc_join(__set_t, rehash)(self, self->capacity * 2);
   uint64_t h = self->hash(key);
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   s->hash_or |= h;
   s->hash_and &= h;
 #endif // _lc_profile_enabled
@@ -168,7 +168,7 @@ _lc_join(__set_t, insert)(__set_t *self, T key) {
 static inline bool
 _lc_join(__set_t, contains)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   s->hash_or |= h;
   s->hash_and &= h;
 #endif // _lc_profile_enabled
@@ -187,7 +187,7 @@ _lc_join(__set_t, contains)(__set_t *self, T key) {
 static inline T *
 _lc_join(__set_t, find)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   self->hash_or |= h;
   self->hash_and &= h;
   size_t probe = 0;
@@ -196,18 +196,18 @@ _lc_join(__set_t, find)(__set_t *self, T key) {
   __node_t *cur = self->buckets[index];
   while (cur) {
     if (self->eq(key, cur->data)) {
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
       if (probe > self->max_probe)
         self->max_probe = probe;
 #endif // _lc_profile_enabled
       return &cur->data;
     }
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
     probe++;
 #endif // _lc_profile_enabled
     cur = cur->next;
   }
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   if (probe > s->max_probe)
     self->max_probe = probe;
 #endif // _lc_profile_enabled
@@ -221,7 +221,7 @@ static inline bool
 _lc_join(__set_t, remove)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
   size_t index = (size_t)(h % self->capacity);
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   self->hash_or |= h;
   self->hash_and &= h;
   size_t probe = 0;
@@ -242,20 +242,20 @@ _lc_join(__set_t, remove)(__set_t *self, T key) {
         free(cur);
       }
       self->size--;
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
       if (probe > self->max_probe)
         self->max_probe = probe;
       self->num_erases++;
 #endif // _lc_profile_enabled
       return true;
     }
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
     probe++;
 #endif // _lc_profile_enabled
     prv = cur;
     cur = cur->next;
   }
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   if (probe > self->max_probe)
     self->max_probe = probe;
 #endif // _lc_profile_enabled
@@ -286,7 +286,7 @@ _lc_join(__set_t, destroy)(__set_t *self) {
   self->buckets = NULL;
 }
 
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
 // Prints a small set of data used to gather information
 // about the set performance. The performance of a hash set comes
 // down to a simple question: "How good is your hash function?"
@@ -330,6 +330,6 @@ _lc_join(__set_t, print_profiling_data)(__set_t *self, const char *name) {
 #undef __set_t
 #undef _lc_nodeset_pfx
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif // __cplusplus

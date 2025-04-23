@@ -9,23 +9,23 @@
 // the key, you do not deallocate the string after calling 'insert', the map
 // will handle the string deallocation when calling 'remove' or 'destroy')
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif // __cplusplus
 
-#ifndef K
+#if !defined(K)
 #define K int
 #endif // K
 
-#ifndef V
+#if !defined(V)
 #define V int
 #endif // V
 
-#ifndef _lc_nodemap_lf
+#if !defined(_lc_nodemap_lf)
 #define _lc_nodemap_lf 0.8
 #endif // _lc_nodemap_lf
 
-#ifndef _lc_nodemap_pfx
+#if !defined(_lc_nodemap_pfx)
 #define _lc_nodemap_pfx _lc_join(K, V)
 #define __map_t _lc_join(_lc_nodemap_pfx, node_map)
 #else
@@ -45,7 +45,7 @@ typedef struct __node_t {
 typedef struct __map_t {
   size_t size;
   size_t capacity;
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   uint64_t hash_or;
   uint64_t hash_and;
   size_t num_erases;
@@ -72,7 +72,7 @@ _lc_join(__map_t, init)(__map_t *map, size_t capacity, uint64_t (*hash)(K),
   map->hash = hash;
   map->key_eq = k_eq ? k_eq : _lc_join(__map_t, default_key_eq);
   map->buckets = (__node_t **)calloc(map->capacity, sizeof(__node_t *));
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   map->hash_or = 0;
   map->hash_and = UINT64_MAX;
   map->num_erases = 0;
@@ -117,7 +117,7 @@ _lc_join(__map_t, insert)(__map_t *map, K key, V val) {
   if ((float)map->size / (float)map->capacity > _lc_nodemap_lf)
     _lc_join(__map_t, rehash)(map, map->capacity * 2);
   uint64_t h = map->hash(key);
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
   map->hash_or |= h;
   map->hash_and &= h;
 #endif // _lc_profile_enabled
@@ -197,7 +197,7 @@ _lc_join(__map_t, remove)(__map_t *map, K key) {
         map->drop_val(cur->value);
       free(cur);
       map->size--;
-#ifdef _lc_profile_enabled
+#if defined(_lc_profile_enabled)
       map->num_erases++;
 #endif // _lc_profile_enabled
       return true;

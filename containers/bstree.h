@@ -1,10 +1,14 @@
 #include "common.h"
 
-#ifndef T
+#if defined(__cplusplus)
+extern "C" {
+#endif // __cplusplus
+
+#if !defined(T)
 #define T int
 #endif // T
 
-#ifndef _lc_bst_pfx
+#if !defined(_lc_bst_pfx)
 #define _lc_bst_pfx T
 #define __bstree_t _lc_join(_lc_bst_pfx, bstree)
 #else
@@ -81,18 +85,55 @@ _lc_join(__bstree_t, remove)(__bstree_t *t, T data) {
   ASSERT((t != NULL), "Trying to call 'remove' on a NULL tree\n");
   ASSERT((t->cmp != NULL),
          "Trying to call 'remove' on a tree with no cmp function\n");
-  __bsnode_t *n = t->root;
-  while (n) {
-    if (t->cmp(n->data, data) == 0) {
-      // Remove the node from the tree
-      return true;
+  __bsnode_t **n = &t->root;
+  __bsnode_t *parent = NULL;
+  // Traverse to find the node to be removed
+  while (*n != NULL) {
+    int cmp = t->cmp((*n)->data, data);
+    if (cmp < 0) {
+      parent = *n;
+      n = &(*n)->r;
+    } else if (cmp > 0) {
+      parent = *n;
+      n = &(*n)->l;
+    } else {
+      break; // Node found
     }
-    if (t->cmp(n->data, data) > 0)
-      n = n->l;
-    else
-      n = n->r;
   }
-  return false;
+  if (*n == NULL)
+    return false; // Node not found
+
+  __bsnode_t *node_to_remove = *n;
+  // Case 1: Node has no children (leaf node)
+  if (node_to_remove->l == NULL && node_to_remove->r == NULL) {
+    *n = NULL; // Remove the node
+  }
+  // Case 2: Node has one child
+  else if (node_to_remove->l == NULL || node_to_remove->r == NULL) {
+    __bsnode_t *child =
+        node_to_remove->l ? node_to_remove->l : node_to_remove->r;
+    *n = child; // Replace the node with its child
+  }
+  // Case 3: Node has two children
+  else {
+    // Find the in-order successor (minimum of the right subtree)
+    __bsnode_t **successor = &node_to_remove->r;
+    while ((*successor)->l != NULL) {
+      successor = &(*successor)->l;
+    }
+    // Replace the node's data with the successor's data
+    node_to_remove->data = (*successor)->data;
+    // Remove the successor node
+    __bsnode_t *successor_node = *successor;
+    *successor = successor_node->r;
+    node_to_remove = successor_node;
+  }
+  if (t->dropfn) {
+    t->dropfn(node_to_remove->data);
+  }
+  free(node_to_remove);
+  t->size--;
+  return true;
 }
 
 static inline size_t
@@ -194,3 +235,7 @@ _lc_join(__bstree_t, destroy)(__bstree_t *t) {
 #undef __bsnode_t
 #undef __bstree_t
 #undef _lc_bst_pfx
+
+#if defined(__cplusplus)
+}
+#endif // __cplusplus

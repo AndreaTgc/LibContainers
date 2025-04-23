@@ -1,10 +1,14 @@
 #include "common.h"
 
-#ifndef T
+#if defined(__cplusplus)
+extern "C" {
+#endif // __cplusplus
+
+#if !defined(T)
 #define T int
 #endif // T
 
-#ifndef _lc_list_pfx
+#if !defined(_lc_list_pfx)
 #define _lc_list_pfx T
 #define __list_t _lc_join(_lc_list_pfx, list)
 #else
@@ -98,3 +102,7 @@ _lc_join(__list_t, destroy)(__list_t *self) {
 }
 
 #undef T
+
+#if defined(__cplusplus)
+}
+#endif // __cplusplus

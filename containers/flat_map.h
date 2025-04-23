@@ -15,23 +15,27 @@
 // Robin-hood hashing in order to have the best distribution possible, resulting
 // in less variance in lookup times and better performance at high load factors
 
+#if defined(__cplusplus)
+extern "C" {
+#endif // __cplusplus
+
 #ifndef K
 #define K int
 #endif // K
 
-#ifndef V
+#if !defined(V)
 #define V int
 #endif // V
 
-#ifndef _lc_fib_const
+#if !defined(_lc_fib_const)
 #define _lc_fib_const 11400714819323198485llu
 #endif // _lc_fib_const
 
-#ifndef _lc_flatmap_lf
+#if !defined(_lc_flatmap_lf)
 #define _lc_flatmap_lf 0.85
 #endif // _lc_flatmap_lf
 
-#ifndef _lc_flatmap_pfx
+#if !defined(_lc_flatmap_pfx)
 #define _lc_flatmap_pfx _lc_join(K, V)
 #define __map_t _lc_join(_lc_flatmap_pfx, flat_map)
 #else
@@ -220,3 +224,7 @@ _lc_join(__map_t, destroy)(__map_t *self) {
   }
   memset(self, 0, sizeof(*self));
 }
+
+#if defined(__cplusplus)
+}
+#endif // __cplusplus

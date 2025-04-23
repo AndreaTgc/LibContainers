@@ -1,4 +1,4 @@
-#ifndef _COMMON_H_
+#if !defined(_COMMON_H_)
 #define _COMMON_H_
 
 #include <assert.h>
@@ -11,7 +11,7 @@
 /*      PUBLIC MACROS          */
 /*******************************/
 
-#ifndef NDEBUG
+#if !defined(NDEBUG)
 
 #define ASSERT(cond, ...)                                                      \
   do {                                                                         \

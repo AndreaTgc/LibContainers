@@ -1,14 +1,14 @@
 #include "common.h"
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif // __cplusplus
 
-#ifndef T
+#if !defined(T)
 #define T int
 #endif // T
 
-#ifndef _lc_vec_pfx
+#if !defined(_lc_vec_pfx)
 #define _lc_vec_pfx T
 #define __vec_t _lc_join(_lc_vec_pfx, vec)
 #else
@@ -173,6 +173,6 @@ _lc_join(__vec_t, destroy)(__vec_t *self) {
 #undef __vec_t
 #undef _lc_vec_pfx
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif // __cplusplus
