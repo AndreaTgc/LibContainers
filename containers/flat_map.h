@@ -1,6 +1,19 @@
 #include "common.h"
 
 // @Author: Andrea Colombo (AndreaTgc)
+// Generic type-safe flat hash-map
+// Implementation details:
+// [1] Uses closed hashing to handle collisions, the entries are stored in a
+// single array, resulting in more cache-friendly structure compared to the
+// node_map.
+// [2] Instead of using the modulo operator we use fibonacci hashing to map the
+// key hash onto a slot in the array, this doesn't result in any chance in how
+// the map behaves, it's just a neat trick to gain some performance (and style)
+// points. The only thing to keep in mind is that the map capacity needs to be a
+// power of 2.
+// [3] During insertion and deletion we use a technique called
+// Robin-hood hashing in order to have the best distribution possible, resulting
+// in less variance in lookup times and better performance at high load factors
 
 #ifndef K
 #define K int
@@ -13,6 +26,10 @@
 #ifndef _lc_fib_const
 #define _lc_fib_const 11400714819323198485llu
 #endif // _lc_fib_const
+
+#ifndef _lc_flatmap_lf
+#define _lc_flatmap_lf 0.85
+#endif // _lc_flatmap_lf
 
 #ifndef _lc_flatmap_pfx
 #define _lc_flatmap_pfx _lc_join(K, V)
@@ -113,16 +130,16 @@ _lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
   self->slots = new_slots;
   for (size_t i = 0; i < old_cap; i++) {
     if (old_slots[i].in_use) {
-      bool res = _lc_join(__map_t, insert)(self, old_slots[i].key, old_slots[i].value);
-      ASSERT((res), "Something went wrong during rehashing\n");
+      _lc_join(__map_t, insert)(self, old_slots[i].key, old_slots[i].value);
     }
   }
+  free(old_slots);
 }
 
 static inline bool
 _lc_join(__map_t, insert)(__map_t *self, K key, V value) {
-  if(self->size == self->capacity) {
-      _lc_join(__map_t, rehash)(self, self->capacity << 1);
+  if ((float)self->size / self->capacity >= _lc_flatmap_lf) {
+    _lc_join(__map_t, rehash)(self, self->capacity << 1);
   }
   size_t index = _lc_join(__map_t, fib_hash)(self->hash(key), self->capacity);
   uint8_t dist = 0;
