@@ -29,25 +29,39 @@ typedef struct __bstree_t {
   void (*dropfn)(T);
 } __bstree_t;
 
+/**
+ * @brief initializes a binary search tree
+ *
+ * @param self pointer to the bst
+ * @param cmp  function used to compare elements of type T
+ * @param drop function used to deallocate elements (optional)
+ */
 static inline void
-_lc_join(__bstree_t, init)(__bstree_t *t, int (*cmp)(T, T), void (*drop)(T)) {
-  ASSERT((t != NULL), "Trying to init a NULL binary search tree\n");
-  t->size = 0;
-  t->root = NULL;
+_lc_join(__bstree_t, init)(__bstree_t *self, int (*cmp)(T, T),
+                           void (*drop)(T)) {
+  ASSERT((self != NULL), "Trying to init a NULL binary search tree\n");
+  self->size = 0;
+  self->root = NULL;
   ASSERT((cmp != NULL),
          "Passing NULL for cmp parameter in binary search tree init\n");
-  t->cmp = cmp;
-  t->dropfn = drop;
+  self->cmp = cmp;
+  self->dropfn = drop;
 }
 
+/**
+ * @brief inserts a new element into the tree
+ *
+ * @param self pointer to the bst
+ * @param data element to insert
+ */
 static inline void
-_lc_join(__bstree_t, insert)(__bstree_t *t, T data) {
-  ASSERT((t != NULL), "Trying to insert into a NULL binary search tree\n");
-  ASSERT((t->cmp != NULL),
+_lc_join(__bstree_t, insert)(__bstree_t *self, T data) {
+  ASSERT((self != NULL), "Trying to insert into a NULL binary search tree\n");
+  ASSERT((self->cmp != NULL),
          "Trying to insert into a binary search tree without cmp function");
-  __bsnode_t **n = &t->root;
+  __bsnode_t **n = &self->root;
   while (*n) {
-    int cmp = t->cmp((*n)->data, data);
+    int cmp = self->cmp((*n)->data, data);
     if (cmp < 0)
       n = &(*n)->r;
     else if (cmp > 0)
@@ -60,19 +74,26 @@ _lc_join(__bstree_t, insert)(__bstree_t *t, T data) {
   (*n)->data = data;
   (*n)->l = NULL;
   (*n)->r = NULL;
-  t->size++;
+  self->size++;
 }
 
+/**
+ * @brief tries to find an element into the tree and returns the pointer to it.
+ * returns NULL if the element is not found
+ *
+ * @param self pointer to the tree
+ * @param data element to find
+ */
 static inline T *
-_lc_join(__bstree_t, find)(__bstree_t *t, T data) {
-  ASSERT((t != NULL), "Trying to call find on a NULL tree\n");
-  ASSERT((t->cmp != NULL),
+_lc_join(__bstree_t, find)(__bstree_t *self, T data) {
+  ASSERT((self != NULL), "Trying to call find on a NULL tree\n");
+  ASSERT((self->cmp != NULL),
          "Trying to call find on a tree with no cmp function\n");
-  __bsnode_t *n = t->root;
+  __bsnode_t *n = self->root;
   while (n) {
-    if (t->cmp(n->data, data) == 0)
+    if (self->cmp(n->data, data) == 0)
       return &n->data;
-    if (t->cmp(n->data, data) > 0)
+    if (self->cmp(n->data, data) > 0)
       n = n->l;
     else
       n = n->r;
@@ -80,16 +101,21 @@ _lc_join(__bstree_t, find)(__bstree_t *t, T data) {
   return NULL;
 };
 
+/**
+ * @brief removes an element from the tree
+ *
+ * @param self pointer to the tree
+ * @param data element to remove
+ */
 static inline bool
-_lc_join(__bstree_t, remove)(__bstree_t *t, T data) {
-  ASSERT((t != NULL), "Trying to call 'remove' on a NULL tree\n");
-  ASSERT((t->cmp != NULL),
+_lc_join(__bstree_t, remove)(__bstree_t *self, T data) {
+  ASSERT((self != NULL), "Trying to call 'remove' on a NULL tree\n");
+  ASSERT((self->cmp != NULL),
          "Trying to call 'remove' on a tree with no cmp function\n");
-  __bsnode_t **n = &t->root;
+  __bsnode_t **n = &self->root;
   __bsnode_t *parent = NULL;
-  // Traverse to find the node to be removed
   while (*n != NULL) {
-    int cmp = t->cmp((*n)->data, data);
+    int cmp = self->cmp((*n)->data, data);
     if (cmp < 0) {
       parent = *n;
       n = &(*n)->r;
@@ -97,45 +123,43 @@ _lc_join(__bstree_t, remove)(__bstree_t *t, T data) {
       parent = *n;
       n = &(*n)->l;
     } else {
-      break; // Node found
+      break;
     }
   }
   if (*n == NULL)
-    return false; // Node not found
+    return false;
 
   __bsnode_t *node_to_remove = *n;
-  // Case 1: Node has no children (leaf node)
   if (node_to_remove->l == NULL && node_to_remove->r == NULL) {
-    *n = NULL; // Remove the node
-  }
-  // Case 2: Node has one child
-  else if (node_to_remove->l == NULL || node_to_remove->r == NULL) {
+    *n = NULL;
+  } else if (node_to_remove->l == NULL || node_to_remove->r == NULL) {
     __bsnode_t *child =
         node_to_remove->l ? node_to_remove->l : node_to_remove->r;
-    *n = child; // Replace the node with its child
-  }
-  // Case 3: Node has two children
-  else {
-    // Find the in-order successor (minimum of the right subtree)
+    *n = child;
+  } else {
     __bsnode_t **successor = &node_to_remove->r;
     while ((*successor)->l != NULL) {
       successor = &(*successor)->l;
     }
-    // Replace the node's data with the successor's data
     node_to_remove->data = (*successor)->data;
-    // Remove the successor node
     __bsnode_t *successor_node = *successor;
     *successor = successor_node->r;
     node_to_remove = successor_node;
   }
-  if (t->dropfn) {
-    t->dropfn(node_to_remove->data);
+  if (self->dropfn) {
+    self->dropfn(node_to_remove->data);
   }
   free(node_to_remove);
-  t->size--;
+  self->size--;
   return true;
 }
 
+/**
+ * @brief helper function used to calculate the depth of a tree
+ *
+ * @param n current node
+ * @param curr current depth value
+ */
 static inline size_t
 _lc_join(__bsnode_t, depth_rec)(__bsnode_t *n, size_t curr) {
   if (!n)
@@ -145,30 +169,51 @@ _lc_join(__bsnode_t, depth_rec)(__bsnode_t *n, size_t curr) {
   return l > r ? l + 1 : r + 1;
 }
 
+/**
+ * @brief calculates the depth of a tree
+ *
+ * @param self pointer to the tree
+ */
 static inline size_t
-_lc_join(__bstree_t, depth)(__bstree_t *t) {
-  ASSERT((t != NULL), "Trying to call depth on a NULL tree\n");
-  return _lc_join(__bsnode_t, depth_rec)(t->root, 0);
+_lc_join(__bstree_t, depth)(__bstree_t *self) {
+  ASSERT((self != NULL), "Trying to call depth on a NULL tree\n");
+  return _lc_join(__bsnode_t, depth_rec)(self->root, 0);
 }
 
+/**
+ * @brief returns the max value inside a tree (right most node)
+ *
+ * @param self pointer to the tree
+ */
 static inline T
-_lc_join(__bstree_t, max)(__bstree_t *t) {
-  ASSERT((t != NULL), "Trying to call max on a NULL tree\n");
-  __bsnode_t *n = t->root;
+_lc_join(__bstree_t, max)(__bstree_t *self) {
+  ASSERT((self != NULL), "Trying to call max on a NULL tree\n");
+  __bsnode_t *n = self->root;
   while (n->r)
     n = n->r;
   return n->data;
 }
 
+/**
+ * @brief returns the min value inside a tree (left most node)
+ *
+ * @param self pointer to the tree
+ */
 static inline T
-_lc_join(__bstree_t, min)(__bstree_t *t) {
-  ASSERT((t != NULL), "Trying to call min on a NULL tree\n");
-  __bsnode_t *n = t->root;
+_lc_join(__bstree_t, min)(__bstree_t *self) {
+  ASSERT((self != NULL), "Trying to call min on a NULL tree\n");
+  __bsnode_t *n = self->root;
   while (n->l)
     n = n->l;
   return n->data;
 }
 
+/**
+ * @brief helper function used for in-order visit
+ *
+ * @param n       current node
+ * @param visitor function applied to the node
+ */
 static inline void
 _lc_join(__bsnode_t, io_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   if (!n)
@@ -178,12 +223,24 @@ _lc_join(__bsnode_t, io_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   _lc_join(__bsnode_t, io_visit)(n->r, visitor);
 }
 
+/**
+ * @brief visits the tree in-order, calling the 'visitor' function on each node
+ *
+ * @param self    pointer to the tree
+ * @param visitor function applied to each node
+ */
 static inline void
-_lc_join(__bstree_t, visit_in_order)(__bstree_t *t, void (*visitor)(T *)) {
-  ASSERT((t != NULL), "Trying to call visit_in_order on a NULL tree\n");
-  _lc_join(__bsnode_t, io_visit)(t->root, visitor);
+_lc_join(__bstree_t, visit_in_order)(__bstree_t *self, void (*visitor)(T *)) {
+  ASSERT((self != NULL), "Trying to call visit_in_order on a NULL tree\n");
+  _lc_join(__bsnode_t, io_visit)(self->root, visitor);
 }
 
+/**
+ * @brief helper function used for pre-order visit
+ *
+ * @param n       current node
+ * @param visitor function applied to the node
+ */
 static inline void
 _lc_join(__bsnode_t, pre_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   if (!n)
@@ -193,12 +250,25 @@ _lc_join(__bsnode_t, pre_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   _lc_join(__bsnode_t, pre_visit)(n->r, visitor);
 }
 
+/**
+ * @brief visits the tree using pre-order, calling the 'visitor' function on
+ * each node
+ *
+ * @param self    pointer to the tree
+ * @param visitor function applied to each node
+ */
 static inline void
-_lc_join(__bstree_t, visit_pre_order)(__bstree_t *t, void (*visitor)(T *)) {
-  ASSERT((t != NULL), "Trying to call visit_pre_order on a NULL tree\n");
-  _lc_join(__bsnode_t, pre_visit)(t->root, visitor);
+_lc_join(__bstree_t, visit_pre_order)(__bstree_t *self, void (*visitor)(T *)) {
+  ASSERT((self != NULL), "Trying to call visit_pre_order on a NULL tree\n");
+  _lc_join(__bsnode_t, pre_visit)(self->root, visitor);
 }
 
+/**
+ * @brief helper function used for post-order visit
+ *
+ * @param n       current node
+ * @param visitor function applied to the node
+ */
 static inline void
 _lc_join(__bsnode_t, post_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   if (!n)
@@ -208,12 +278,25 @@ _lc_join(__bsnode_t, post_visit)(__bsnode_t *n, void (*visitor)(T *)) {
   visitor(&n->data);
 }
 
+/**
+ * @brief visits the tree using post-order, calling the 'visitor' function on
+ * each node
+ *
+ * @param self    pointer to the tree
+ * @param visitor function applied to each node
+ */
 static inline void
-_lc_join(__bstree_t, visit_post_order)(__bstree_t *t, void (*visitor)(T *)) {
-  ASSERT((t != NULL), "Trying to call visit_post_order on a NULL tree\n");
-  _lc_join(__bsnode_t, post_visit)(t->root, visitor);
+_lc_join(__bstree_t, visit_post_order)(__bstree_t *self, void (*visitor)(T *)) {
+  ASSERT((self != NULL), "Trying to call visit_post_order on a NULL tree\n");
+  _lc_join(__bsnode_t, post_visit)(self->root, visitor);
 }
 
+/**
+ * @brief helper function used to destroy the tree nodes
+ *
+ * @param n    current node
+ * @param drop function used to deallocate elements of type T
+ */
 static inline void
 _lc_join(__bsnode_t, destroy_rec)(__bsnode_t *n, void (*drop)(T)) {
   if (n == NULL)
@@ -225,10 +308,16 @@ _lc_join(__bsnode_t, destroy_rec)(__bsnode_t *n, void (*drop)(T)) {
   free(n);
 }
 
+/**
+ * @brief deallocates the memory associated with a tree, resetting it to
+ * a "base" state
+ *
+ * @param self pointer to the tree
+ */
 static inline void
-_lc_join(__bstree_t, destroy)(__bstree_t *t) {
-  ASSERT((t != NULL), "Trying to call destroy on a NULL tree\n");
-  _lc_join(__bsnode_t, destroy_rec)(t->root, t->dropfn);
+_lc_join(__bstree_t, destroy)(__bstree_t *self) {
+  ASSERT((self != NULL), "Trying to call destroy on a NULL tree\n");
+  _lc_join(__bsnode_t, destroy_rec)(self->root, self->dropfn);
 }
 
 #undef T

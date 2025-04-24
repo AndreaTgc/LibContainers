@@ -57,22 +57,32 @@ typedef struct __set_t {
   bool (*eq)(T, T);
 } __set_t;
 
-// Basic equality function used as default if the user doesn't provide
-// a custom one
+/**
+ * @brief default equality used if the user doesn't provide a
+ * custom one
+ */
 static inline bool
 _lc_join(__set_t, fallback_eq)(T a, T b) {
   return a == b;
 }
 
+/**
+ * @brief initializes the set
+ *
+ * @param self pointer to the set
+ * @param icap initial capacity for the set
+ * @param hash user defined hash function for type T
+ * @param drop function used for deallocating the elements (optional)
+ * @param eq   equality function for type T
+ */
 static inline void
-_lc_join(__set_t, init)(__set_t *self, size_t initial_capacity,
-                        uint64_t (*hash)(T), void (*drop)(T),
-                        bool (*eq)(T, T)) {
+_lc_join(__set_t, init)(__set_t *self, size_t icap, uint64_t (*hash)(T),
+                        void (*drop)(T), bool (*eq)(T, T)) {
   ASSERT((self != NULL), "Trying to call 'init' on a NULL set\n");
   ASSERT((hash != NULL),
          "A hash function is required for set initialization\n");
   self->size = 0;
-  self->capacity = initial_capacity == 0 ? 32 : initial_capacity;
+  self->capacity = icap == 0 ? 32 : icap;
   self->hash = hash;
   self->drop = drop;
   self->eq = eq == NULL ? _lc_join(__set_t, fallback_eq) : eq;
@@ -85,6 +95,13 @@ _lc_join(__set_t, init)(__set_t *self, size_t initial_capacity,
 #endif // _lc_profile_enabled
 }
 
+/**
+ * @brief rehashes the set with a new capacity, mainly used for growing
+ * the set size when it goes over the max load factor
+ *
+ * @param self pointer to the set
+ * @param cap  new set capacity
+ */
 static inline void
 _lc_join(__set_t, rehash)(__set_t *self, size_t cap) {
   ASSERT((self != NULL), "Trying to call 'resize' on a NULL set\n");
@@ -120,10 +137,14 @@ _lc_join(__set_t, rehash)(__set_t *self, size_t cap) {
   free(old_buckets);
 }
 
-// Inserts a new key inside the set
-// resolves hash collisions by using open hashing (linked list)
-// the new element gets appended at the end of the list, preserving
-// the insertion order
+/**
+ * @brief inserts a new key inside the set
+ * returns true if the key was added to the set
+ * returns false if the key was already in the set
+ *
+ * @param self pointer to the set
+ * @param key  key to add to the set
+ */
 static inline bool
 _lc_join(__set_t, insert)(__set_t *self, T key) {
   ASSERT((self != NULL), "Trying to call 'insert' on a NULL set\n");
@@ -162,9 +183,13 @@ _lc_join(__set_t, insert)(__set_t *self, T key) {
   return true;
 }
 
-// Checks whether a key is present inside the set
-// returns true if the key is found
-// returns false if the key is NOT found
+/**
+ * @brief checks if a given key is inside the set.
+ * returns true if the key is in the set, returns false if not
+ *
+ * @param self pointer to the set
+ * @param key  key that has to be checked
+ */
 static inline bool
 _lc_join(__set_t, contains)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
@@ -182,8 +207,13 @@ _lc_join(__set_t, contains)(__set_t *self, T key) {
   return false;
 }
 
-// Returns the pointer to the key if it's found
-// inside the set, allowing the user to modify it
+/**
+ * @brief returns the pointer to the key inside the set (NULL if the key is not
+ * inside the set)
+ *
+ * @param self pointer to the set
+ * @param key  key to find
+ */
 static inline T *
 _lc_join(__set_t, find)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
@@ -214,9 +244,14 @@ _lc_join(__set_t, find)(__set_t *self, T key) {
   return NULL;
 }
 
-// Removes a key from the hash-set
-// Returns true if the element was in the set and it has been deleted
-// Returns false if the element was not in the set
+/**
+ * @brief removes a key from the set.
+ * returns true if the key is removed
+ * returns false if the key is not in the set
+ *
+ * @param self pointer to the set
+ * @param key  key to remove from the set
+ */
 static inline bool
 _lc_join(__set_t, remove)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
@@ -262,9 +297,12 @@ _lc_join(__set_t, remove)(__set_t *self, T key) {
   return false;
 }
 
-// Deallocates all the hash-set memory
-// The user is responsible for freeing the set itself
-// if it was heap-allocated
+/**
+ * @brief deallocates the memory associated with a set, resetting it
+ * to a "base" state
+ *
+ * @param self pointer to the set
+ */
 static inline void
 _lc_join(__set_t, destroy)(__set_t *self) {
   if (!self)

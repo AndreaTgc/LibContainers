@@ -61,16 +61,34 @@ typedef struct __map_t {
   void (*drop_v)(V);    // same as 'drop_k'
 } __map_t;
 
+/**
+ * @brief default key equality function, used if the user
+ * doesn't provide a custom one.
+ */
 static inline bool
 _lc_join(__map_t, default_key_eq)(K a, K b) {
   return a == b;
 }
 
+/**
+ * @brief fibonacci hashing function that maps a key hash onto a slot
+ * inside the map (still experimenting)
+ */
 static inline size_t
 _lc_join(__map_t, fib_hash)(uint64_t hash, size_t cap) {
   return (size_t)(hash * _lc_fib_const) >> (__builtin_clzll(cap) + 1);
 }
 
+/**
+ * @brief initializes a map
+ *
+ * @param self pointer to the map
+ * @param cap  initial number of slots
+ * @param hash user-provided hash function for K
+ * @param eq   equality function for keys
+ * @param dk   function to deallocate keys (optional)
+ * @param dv   function to deallocate values (optional)
+ */
 static inline void
 _lc_join(__map_t, init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
                         bool (*eq)(K, K), void (*dk)(K), void (*dv)(V)) {
@@ -89,6 +107,13 @@ _lc_join(__map_t, init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
   self->slots = (__entry_t *)calloc(self->capacity, sizeof(__entry_t));
 }
 
+/**
+ * @brief returns the pointer to the value associated to a given key
+ * returns NULL if the key is not found inside the map
+ *
+ * @param self pointer to the map
+ * @param key  key to find
+ */
 static inline V *
 _lc_join(__map_t, find)(__map_t *self, K key) {
   size_t index = _lc_join(__map_t, fib_hash)(self->hash(key), self->capacity);
@@ -106,6 +131,13 @@ _lc_join(__map_t, find)(__map_t *self, K key) {
   return NULL;
 }
 
+/**
+ * @brief checks if a key is found inside the map
+ * returns true if the key is found, returns false if not found
+ *
+ * @param self pointer to the map
+ * @param key  key to find
+ */
 static inline bool
 _lc_join(__map_t, contains)(__map_t *self, K key) {
   return _lc_join(__map_t, find)(self, key) != NULL;
@@ -123,6 +155,13 @@ _lc_join(__map_t, get)(__map_t *self, K key, V *out) {
 // Declaration for rehashing
 static inline bool _lc_join(__map_t, insert)(__map_t *self, K key, V value);
 
+/**
+ * @brief rehashes the map, requires new cap to be higher than the current
+ * capacity
+ *
+ * @param self    pointer to the map
+ * @param new_cap new capacity for rehashing
+ */
 static inline void
 _lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
   ASSERT((new_cap > self->capacity),
@@ -140,6 +179,15 @@ _lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
   free(old_slots);
 }
 
+/**
+ * @brief inserts a (K, V) pair into the map
+ * returns true if the pair was inserted
+ * returns false if the key was already inside the map
+ *
+ * @param self  pointer to the map
+ * @param key   key to insert
+ * @param value value to insert
+ */
 static inline bool
 _lc_join(__map_t, insert)(__map_t *self, K key, V value) {
   if ((float)self->size / self->capacity >= _lc_flatmap_lf) {
@@ -176,6 +224,14 @@ _lc_join(__map_t, insert)(__map_t *self, K key, V value) {
   return false;
 }
 
+/**
+ * @brief removes a key and its associated value from the map
+ * returns true if the pair is removed from the map
+ * returns false if the key is not found in the map
+ *
+ * @param self pointer to the map
+ * @param key  key to remove
+ */
 static inline bool
 _lc_join(__map_t, remove)(__map_t *self, K key) {
   size_t index = _lc_join(__map_t, fib_hash)(key, self->capacity);
@@ -207,6 +263,12 @@ _lc_join(__map_t, remove)(__map_t *self, K key) {
   return false;
 }
 
+/**
+ * @brief deallocates the memory associated to a map, resetting it to a
+ * "base" state
+ *
+ * @param self pointer to the map
+ */
 static inline void
 _lc_join(__map_t, destroy)(__map_t *self) {
   if (!self)
@@ -224,6 +286,13 @@ _lc_join(__map_t, destroy)(__map_t *self) {
   }
   memset(self, 0, sizeof(*self));
 }
+
+#undef K
+#undef V
+#undef __map_t
+#undef __entry_t
+#undef _lc_flatmap_pfx
+#undef _lc_flatmap_lf
 
 #if defined(__cplusplus)
 }

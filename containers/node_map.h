@@ -34,8 +34,6 @@ extern "C" {
 
 #define __node_t _lc_join(_lc_nodemap_pfx, node)
 
-// Node using in linked list to handle hash
-// collisions (open hashing)
 typedef struct __node_t {
   K key;
   V value;
@@ -58,39 +56,59 @@ typedef struct __map_t {
   __node_t **buckets;
 } __map_t;
 
+/**
+ * @brief default key equality function, used if the user
+ * doesn't provide a custom one.
+ */
 static inline bool
 _lc_join(__map_t, default_key_eq)(K a, K b) {
   return a == b;
 }
 
+/**
+ * @brief initializes a map
+ *
+ * @param self   pointer to the map
+ * @param icap   initial number of buckets
+ * @param hash   user provided hash function for T
+ * @param k_eq   equality function for T
+ * @param drop_k function used for deallocating keys (optional)
+ * @param drop_v function used for deallocating values (optional)
+ */
 static inline void
-_lc_join(__map_t, init)(__map_t *map, size_t capacity, uint64_t (*hash)(K),
+_lc_join(__map_t, init)(__map_t *self, size_t icap, uint64_t (*hash)(K),
                         bool (*k_eq)(K, K), void (*drop_k)(K),
                         void (*drop_v)(V)) {
-  map->size = 0;
-  map->capacity = capacity == 0 ? 32 : capacity;
-  map->hash = hash;
-  map->key_eq = k_eq ? k_eq : _lc_join(__map_t, default_key_eq);
-  map->buckets = (__node_t **)calloc(map->capacity, sizeof(__node_t *));
+  self->size = 0;
+  self->capacity = icap == 0 ? 32 : icap;
+  self->hash = hash;
+  self->key_eq = k_eq ? k_eq : _lc_join(__map_t, default_key_eq);
+  self->buckets = (__node_t **)calloc(self->capacity, sizeof(__node_t *));
 #if defined(_lc_profile_enabled)
-  map->hash_or = 0;
-  map->hash_and = UINT64_MAX;
-  map->num_erases = 0;
-  map->max_probe = 0;
+  self->hash_or = 0;
+  self->hash_and = UINT64_MAX;
+  self->num_erases = 0;
+  self->max_probe = 0;
 #endif // _lc_profile_enabled
 }
 
+/**
+ * @brief rehashes the map using a new number of buckets
+ *
+ * @param self pointer to the map
+ * @param cap  new number of buckets to allocate
+ */
 static inline void
-_lc_join(__map_t, rehash)(__map_t *map, size_t cap) {
-  ASSERT((map != NULL), "Trying to call 'resize' on a NULL map\n");
+_lc_join(__map_t, rehash)(__map_t *self, size_t cap) {
+  ASSERT((self != NULL), "Trying to call 'resize' on a NULL map\n");
   __node_t **new_buckets = (__node_t **)calloc(cap, sizeof(__node_t *));
-  __node_t **old_buckets = map->buckets;
-  for (size_t i = 0; i < map->capacity; i++) {
-    __node_t *cur = map->buckets[i];
+  __node_t **old_buckets = self->buckets;
+  for (size_t i = 0; i < self->capacity; i++) {
+    __node_t *cur = self->buckets[i];
     __node_t *next = NULL;
     while (cur) {
       next = cur->next;
-      uint64_t new_idx = map->hash(cur->key) % cap;
+      uint64_t new_idx = self->hash(cur->key) % cap;
       __node_t *n = new_buckets[new_idx];
       if (!n) {
         new_buckets[new_idx] = cur;
@@ -107,25 +125,34 @@ _lc_join(__map_t, rehash)(__map_t *map, size_t cap) {
       cur = next;
     }
   }
-  map->buckets = new_buckets;
+  self->buckets = new_buckets;
   free(old_buckets);
-  map->capacity = cap;
+  self->capacity = cap;
 }
 
+/**
+ * @brief inserts a new (K, V) pair inside the map
+ * returns true if the pair is aadded to the map
+ * return false if the key was already present in the map
+ *
+ * @param self pointer to the map
+ * @param key  key to add to the map
+ * @param val  value associated to the key
+ */
 static inline bool
-_lc_join(__map_t, insert)(__map_t *map, K key, V val) {
-  if ((float)map->size / (float)map->capacity > _lc_nodemap_lf)
-    _lc_join(__map_t, rehash)(map, map->capacity * 2);
-  uint64_t h = map->hash(key);
+_lc_join(__map_t, insert)(__map_t *self, K key, V val) {
+  if ((float)self->size / (float)self->capacity > _lc_nodemap_lf)
+    _lc_join(__map_t, rehash)(self, self->capacity * 2);
+  uint64_t h = self->hash(key);
 #if defined(_lc_profile_enabled)
-  map->hash_or |= h;
-  map->hash_and &= h;
+  self->hash_or |= h;
+  self->hash_and &= h;
 #endif // _lc_profile_enabled
-  size_t index = h % map->capacity;
-  __node_t *cur = map->buckets[index];
+  size_t index = h % self->capacity;
+  __node_t *cur = self->buckets[index];
   __node_t *prv = NULL;
   while (cur) {
-    if (map->key_eq(cur->key, key))
+    if (self->key_eq(cur->key, key))
       return false;
     prv = cur;
     cur = cur->next;
@@ -135,42 +162,66 @@ _lc_join(__map_t, insert)(__map_t *map, K key, V val) {
   new_node->key = key;
   new_node->value = val;
   if (!prv)
-    map->buckets[index] = new_node;
+    self->buckets[index] = new_node;
   else
     prv->next = new_node;
-  map->size++;
+  self->size++;
   return true;
 }
 
+/**
+ * @brief checks if a key is inside the map
+ * returns true if the key is in the map
+ * returns false otherwise
+ *
+ * @param self pointer to the map
+ * @param key  key to check
+ */
 static inline bool
-_lc_join(__map_t, contains)(__map_t *map, K key) {
-  uint64_t h = map->hash(key);
-  size_t index = (size_t)(h % map->capacity);
-  __node_t *cur = map->buckets[index];
+_lc_join(__map_t, contains)(__map_t *self, K key) {
+  uint64_t h = self->hash(key);
+  size_t index = (size_t)(h % self->capacity);
+  __node_t *cur = self->buckets[index];
   while (cur) {
-    if (map->key_eq(cur->key, key))
+    if (self->key_eq(cur->key, key))
       return true;
     cur = cur->next;
   }
   return false;
 }
 
+/**
+ * @brief returns the pointer to the value associated with a given key.
+ * returns NULL if the key is not found inside the map
+ *
+ * @param self pointer to the map
+ * @param key  key to find
+ */
 static inline V *
-_lc_join(__map_t, find)(__map_t *map, K key) {
-  uint64_t h = map->hash(key);
-  size_t index = (size_t)(h % map->capacity);
-  __node_t *cur = map->buckets[index];
+_lc_join(__map_t, find)(__map_t *self, K key) {
+  uint64_t h = self->hash(key);
+  size_t index = (size_t)(h % self->capacity);
+  __node_t *cur = self->buckets[index];
   while (cur) {
-    if (map->key_eq(cur->key, key))
+    if (self->key_eq(cur->key, key))
       return &cur->value;
     cur = cur->next;
   }
   return NULL;
 }
 
+/**
+ * @brief tries to find a key inside the map.
+ * If the key is found, it returns true and copies the value associated to the
+ * key in the 'out' parameter
+ *
+ * @param self pointer to the map
+ * @param key  key we want to find
+ * @param out  pointer for value copying
+ */
 static inline bool
-_lc_join(__map_t, get)(__map_t *map, K key, V *out) {
-  V *tmp = _lc_join(__map_t, find)(map, key);
+_lc_join(__map_t, get)(__map_t *self, K key, V *out) {
+  V *tmp = _lc_join(__map_t, find)(self, key);
   if (tmp) {
     *out = *tmp;
     return true;
@@ -178,27 +229,35 @@ _lc_join(__map_t, get)(__map_t *map, K key, V *out) {
     return false;
 }
 
+/**
+ * @brief removes a key and the value associated to it from the map
+ * returns true if the (K, V) pair is removed
+ * returns false if the key is not found in the map
+ *
+ * @param self pointer to the map
+ * @param key  key to remove
+ */
 static inline bool
-_lc_join(__map_t, remove)(__map_t *map, K key) {
-  uint64_t h = map->hash(key);
-  size_t index = (size_t)(h % map->capacity);
-  __node_t *cur = map->buckets[index];
+_lc_join(__map_t, remove)(__map_t *self, K key) {
+  uint64_t h = self->hash(key);
+  size_t index = (size_t)(h % self->capacity);
+  __node_t *cur = self->buckets[index];
   __node_t *prv = NULL;
   while (cur) {
-    if (map->key_eq(cur->key, key)) {
+    if (self->key_eq(cur->key, key)) {
       if (!prv) {
-        map->buckets[index] = cur->next;
+        self->buckets[index] = cur->next;
       } else {
         prv->next = cur->next;
       }
-      if (map->drop_key)
-        map->drop_key(cur->key);
-      if (map->drop_val)
-        map->drop_val(cur->value);
+      if (self->drop_key)
+        self->drop_key(cur->key);
+      if (self->drop_val)
+        self->drop_val(cur->value);
       free(cur);
-      map->size--;
+      self->size--;
 #if defined(_lc_profile_enabled)
-      map->num_erases++;
+      self->num_erases++;
 #endif // _lc_profile_enabled
       return true;
     }
@@ -208,25 +267,31 @@ _lc_join(__map_t, remove)(__map_t *map, K key) {
   return false;
 }
 
+/**
+ * @brief deallocates the memory associated to a map, resetting it
+ * to a "base" state
+ *
+ * @param self pointer to the map
+ */
 static inline void
-_lc_join(__map_t, destroy)(__map_t *map) {
-  if (!map)
+_lc_join(__map_t, destroy)(__map_t *self) {
+  if (!self)
     return;
-  for (size_t i = 0; i < map->capacity; i++) {
-    __node_t *cur = map->buckets[i];
+  for (size_t i = 0; i < self->capacity; i++) {
+    __node_t *cur = self->buckets[i];
     __node_t *to_free = NULL;
     while (cur) {
       to_free = cur;
-      if (map->drop_key)
-        map->drop_key(cur->key);
-      if (map->drop_val)
-        map->drop_val(cur->value);
+      if (self->drop_key)
+        self->drop_key(cur->key);
+      if (self->drop_val)
+        self->drop_val(cur->value);
       cur = cur->next;
       free(to_free);
     }
   }
-  free(map->buckets);
-  memset(map, 0, sizeof(*map));
+  free(self->buckets);
+  memset(self, 0, sizeof(*self));
 }
 
 #undef __node_t

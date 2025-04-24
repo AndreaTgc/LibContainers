@@ -1,5 +1,13 @@
 #include "common.h"
 
+// @Author: Andrea Colombo (AndreaTgc)
+// Generic type-safe vector (inspried by STL's vector)
+// Implementation details
+// [1] Stores vector elements on the heap, allowing the vector
+// to grow as needed
+// [2] Amortized constant time insertion and deletion
+// [3] Constant time access
+
 #if defined(__cplusplus)
 extern "C" {
 #endif // __cplusplus
@@ -22,6 +30,13 @@ typedef struct __vec_t {
   size_t capacity;
 } __vec_t;
 
+/**
+ * @brief initializes the vector
+ *
+ * @param  self pointer to the vector
+ * @param  icap initial capacity for the vector
+ * @dropfn function for elements deallocation (optional)
+ */
 static inline void
 _lc_join(__vec_t, init)(__vec_t *self, size_t icap, void (*dropfn)(T *)) {
   ASSERT((self != NULL), "Trying to init a NULL vector\n");
@@ -31,6 +46,12 @@ _lc_join(__vec_t, init)(__vec_t *self, size_t icap, void (*dropfn)(T *)) {
   self->drop = dropfn;
 }
 
+/**
+ * @brief returns the pointer to the value at a given index
+ *
+ * @param self  pointer to the vector
+ * @param index index of the element to access
+ */
 static inline T *
 _lc_join(__vec_t, at)(__vec_t *self, size_t index) {
   ASSERT((self != NULL), "Trying to call 'at' on a NULL vector\n");
@@ -39,17 +60,31 @@ _lc_join(__vec_t, at)(__vec_t *self, size_t index) {
   return &self->data[index];
 }
 
+/**
+ * @brief sets the value of the element at a given index
+ *
+ * @param self  pointer to the vector
+ * @param index index of the element to set
+ * @param val   value to assign to the element
+ */
 static inline void
-_lc_join(__vec_t, set)(__vec_t *self, size_t index, T data) {
+_lc_join(__vec_t, set)(__vec_t *self, size_t index, T val) {
   ASSERT((self != NULL), "Trying to call 'set' on a NULL vector\n");
-  T *el = _lc_join(__vec_t, at)(self, index);
-  if (!el)
+  T *elem = _lc_join(__vec_t, at)(self, index);
+  if (!elem)
     return;
   if (self->drop)
-    self->drop(el);
-  *el = data;
+    self->drop(elem);
+  *elem = val;
 }
 
+/**
+ * @brief removes the element at a given index, shifting back
+ * the rest of the vector.
+ *
+ * @param self  pointer to the vector
+ * @param index index of the element to remove
+ */
 static inline void
 _lc_join(__vec_t, remove_at)(__vec_t *self, size_t index) {
   if (index >= self->size)
@@ -58,8 +93,15 @@ _lc_join(__vec_t, remove_at)(__vec_t *self, size_t index) {
   self->size--;
 }
 
+/**
+ * @brief inserts a new element at a given index
+ *
+ * @param self  pointer to the vector
+ * @param index index for the new element insertion
+ * @param data  value to insert at the given index
+ */
 static inline void
-_lc_join(__vec_t, insert_at)(__vec_t *self, size_t index) {
+_lc_join(__vec_t, insert_at)(__vec_t *self, size_t index, T val) {
   if (index >= self->size)
     return;
   if (self->size == self->capacity) {
@@ -67,19 +109,32 @@ _lc_join(__vec_t, insert_at)(__vec_t *self, size_t index) {
     self->data = (T *)realloc(self->data, sizeof(T) * self->capacity);
   }
   memmove(&self->data[index + 1], &self->data[index], self->size - index);
+  self->data[index] = val;
   self->size++;
 }
 
+/**
+ * @brief appends a new element to the vector
+ *
+ * @param self pointer to the vector
+ * @param val  value to append
+ */
 static inline void
-_lc_join(__vec_t, push_back)(__vec_t *self, T el) {
+_lc_join(__vec_t, push_back)(__vec_t *self, T val) {
   ASSERT((self != NULL), "Trying to call 'push_back' on a NULL vector\n");
   if (self->size == self->capacity) {
     self->capacity = self->capacity == 0 ? 16 : self->capacity * 2;
     self->data = (T *)realloc(self->data, sizeof(T) * self->capacity);
   }
-  self->data[self->size++] = el;
+  self->data[self->size++] = val;
 }
 
+/**
+ * @brief removes the last element of the vector, returning the pointer
+ * to it.
+ *
+ * @brief self pointer to the vector
+ */
 static inline T *
 _lc_join(__vec_t, pop_back)(__vec_t *self) {
   ASSERT((self != NULL), "Trying to call 'pop_back' on a NULL vector\n");
@@ -88,6 +143,13 @@ _lc_join(__vec_t, pop_back)(__vec_t *self) {
   return &self->data[--self->size];
 }
 
+/**
+ * @brief returns the pointer to the first element of the vector that satisfies
+ * a unary predicate (NULL if none matches)
+ *
+ * @param self pointer to the vector
+ * @param pred unary predicate to match
+ */
 static inline T *
 _lc_join(__vec_t, first_match)(__vec_t *self, int (*pred)(T)) {
   ASSERT((self != NULL), "Trying to call 'first_match' on a NULL vector\n");
@@ -98,6 +160,13 @@ _lc_join(__vec_t, first_match)(__vec_t *self, int (*pred)(T)) {
   return NULL;
 }
 
+/**
+ * @brief returns the pointer to the last element of the vector that satisfies
+ * a unary predicate (NULL if none matches)
+ *
+ * @param self pointer to the vector
+ * @param pred unary predicate to match
+ */
 static inline T *
 _lc_join(__vec_t, last_match)(__vec_t *self, int (*pred)(T)) {
   ASSERT((self != NULL), "Trying to call 'last_match' on a NULL vector\n");
@@ -110,6 +179,11 @@ _lc_join(__vec_t, last_match)(__vec_t *self, int (*pred)(T)) {
   return NULL;
 }
 
+/**
+ * @brief reverses the order of the elements inside the vector
+ *
+ * @param self pointer to the vector
+ */
 static inline void
 _lc_join(__vec_t, reverse)(__vec_t *self) {
   ASSERT((self != NULL), "Trying to call 'reverse' on a NULL vector\n");
@@ -124,12 +198,25 @@ _lc_join(__vec_t, reverse)(__vec_t *self) {
   }
 }
 
+/**
+ * @brief sorts the vector using the C stdlib quicksort implementation
+ *
+ * @param self pointer to the vector
+ * @param cmp  function that compares two Ts (required for qsort)
+ */
 static inline void
 _lc_join(__vec_t, qsort)(__vec_t *self, int (*cmp)(const T *, const T *)) {
   qsort(self->data, self->size, sizeof(T),
         (int (*)(const void *, const void *))cmp);
 }
 
+/**
+ * @brief returns a new vector containing only the elements of the first vector
+ * that satisfy a given unary predicate
+ *
+ * @param self pointer to the vector
+ * @param pred unary predicate for filter
+ */
 static inline __vec_t
 _lc_join(__vec_t, filter)(__vec_t *self, bool (*pred)(T *)) {
   ASSERT((self != NULL), "Trying to call 'filter' on a NULL vector\n");
@@ -142,6 +229,13 @@ _lc_join(__vec_t, filter)(__vec_t *self, bool (*pred)(T *)) {
   return n;
 }
 
+/**
+ * @brief maps a vector to a new one of the same type using a function
+ * passed as parameter
+ *
+ * @param self      pointer to the vector
+ * @param transform function that maps a T to a new T
+ */
 static inline __vec_t
 _lc_join(__vec_t, map)(__vec_t *self, T (*transform)(T *)) {
   ASSERT((self != NULL), "Trying to call 'map' on a NULL vector\n");
@@ -153,6 +247,12 @@ _lc_join(__vec_t, map)(__vec_t *self, T (*transform)(T *)) {
   return n;
 }
 
+/**
+ * @brief deallocates the memory linked to a vector, resetting it to a "base"
+ * state
+ *
+ * @param self pointer to the vector
+ */
 static inline void
 _lc_join(__vec_t, destroy)(__vec_t *self) {
   if (!self)
@@ -163,10 +263,7 @@ _lc_join(__vec_t, destroy)(__vec_t *self) {
     }
   }
   free(self->data);
-  self->size = 0;
-  self->capacity = 0;
-  self->drop = NULL;
-  self->data = NULL;
+  memset(self, 0, sizeof(*self));
 }
 
 #undef T
