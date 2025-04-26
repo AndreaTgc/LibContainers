@@ -1,4 +1,6 @@
 #include "common.h"
+#include <stdarg.h>
+#include <string.h>
 
 // @Author: Andrea Colombo (AndreaTgc)
 // Generic type-safe vector (inspried by STL's vector)
@@ -208,6 +210,51 @@ static inline void
 _lc_join(__vec_t, qsort)(__vec_t *self, int (*cmp)(const T *, const T *)) {
   qsort(self->data, self->size, sizeof(T),
         (int (*)(const void *, const void *))cmp);
+}
+
+/**
+ * @brief takes an arbitrary number of vectors of type T, combines all the
+ * elements and sorts them. The elements are then put back inside the vectors.
+ *
+ * @param cmp function that compares two Ts (required for sorting)
+ */
+static inline bool
+_lc_join(__vec_t, sort_chained)(int (*cmp)(const T *, const T *), ...) {
+  va_list args;
+  va_start(args, cmp);
+  __vec_t *cur;
+  size_t tot_size = 0;
+  while ((cur = va_arg(args, __vec_t *)) != NULL)
+    tot_size += cur->size;
+  va_end(args);
+
+  if (tot_size == 0)
+    return true;
+
+  T *flat = (T *)calloc(tot_size, sizeof(T));
+
+  if (!flat)
+    return false;
+
+  va_start(args, cmp);
+  size_t offset = 0;
+  while ((cur = va_arg(args, __vec_t *)) != NULL) {
+    memcpy(&flat[offset], cur->data, cur->size * sizeof(T));
+    offset += cur->size;
+  }
+  va_end(args);
+
+  qsort(flat, tot_size, sizeof(T), (int (*)(const void *, const void *))(cmp));
+
+  va_start(args, cmp);
+  offset = 0;
+  while ((cur = va_arg(args, __vec_t *)) != NULL) {
+    memcpy(cur->data, &flat[offset], cur->size * sizeof(T));
+    offset += cur->size;
+  }
+  va_end(args);
+  free(flat);
+  return true;
 }
 
 /**

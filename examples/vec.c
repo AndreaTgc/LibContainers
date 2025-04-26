@@ -18,8 +18,8 @@ is_even(int *a) {
 }
 
 int
-map_to_mod10(int *a) {
-  return *a % 10;
+succ(int *a) {
+  return *a + 1;
 }
 
 int
@@ -69,15 +69,33 @@ main(void) {
   }
   puts("]\n");
 
-  puts("Let's map each element of the vector to the respective mod10 value");
-  IntVec mapped = IntVec_map(&vec, map_to_mod10);
+  puts("Let's map each element of the vector to the successor");
+  IntVec mapped = IntVec_map(&filtered, succ);
   puts("[Mapped Vector]");
   printf("[ ");
   for (size_t i = 0; i < mapped.size; ++i) {
     printf("%d ", *IntVec_at(&mapped, i));
   }
-  puts("]");
+  puts("]\n");
 
+  puts("Now let's sort the elements of the 3 vectors we created by treating "
+       "them as a single vector");
+  IntVec_sort_chained(compare_ints, &vec, &filtered, &mapped, NULL);
+  printf("[First vector] [ ");
+  for (size_t i = 0; i < vec.size; ++i) {
+    printf("%d ", *IntVec_at(&vec, i));
+  }
+  puts("]");
+  printf("[Filtered vector] [ ");
+  for (size_t i = 0; i < filtered.size; ++i) {
+    printf("%d ", *IntVec_at(&filtered, i));
+  }
+  puts("]");
+  printf("[Mapped vector] [ ");
+  for (size_t i = 0; i < mapped.size; ++i) {
+    printf("%d ", *IntVec_at(&mapped, i));
+  }
+  puts("]");
   // Cleanup
   IntVec_destroy(&vec);
   IntVec_destroy(&filtered);
