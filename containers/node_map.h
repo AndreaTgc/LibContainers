@@ -33,6 +33,7 @@ extern "C" {
 #endif // _lc_nodemap_pfx
 
 #define __node_t _lc_join(_lc_nodemap_pfx, node)
+#define Self __map_t
 
 typedef struct __node_t {
   K key;
@@ -40,7 +41,7 @@ typedef struct __node_t {
   struct __node_t *next;
 } __node_t;
 
-typedef struct __map_t {
+typedef struct Self {
   size_t size;
   size_t capacity;
 #if defined(_lc_profile_enabled)
@@ -54,14 +55,14 @@ typedef struct __map_t {
   void (*drop_val)(V);
   bool (*key_eq)(K, K);
   __node_t **buckets;
-} __map_t;
+} Self;
 
 /**
  * @brief default key equality function, used if the user
  * doesn't provide a custom one.
  */
 static inline bool
-_lc_join(__map_t, default_key_eq)(K a, K b) {
+_lc_membfunc(default_key_eq)(K a, K b) {
   return a == b;
 }
 
@@ -76,13 +77,13 @@ _lc_join(__map_t, default_key_eq)(K a, K b) {
  * @param drop_v function used for deallocating values (optional)
  */
 static inline void
-_lc_join(__map_t, init)(__map_t *self, size_t icap, uint64_t (*hash)(K),
+_lc_membfunc(init)(Self *self, size_t icap, uint64_t (*hash)(K),
                         bool (*k_eq)(K, K), void (*drop_k)(K),
                         void (*drop_v)(V)) {
   self->size = 0;
   self->capacity = icap == 0 ? 32 : icap;
   self->hash = hash;
-  self->key_eq = k_eq ? k_eq : _lc_join(__map_t, default_key_eq);
+  self->key_eq = k_eq ? k_eq : _lc_membfunc(default_key_eq);
   self->buckets = (__node_t **)calloc(self->capacity, sizeof(__node_t *));
 #if defined(_lc_profile_enabled)
   self->hash_or = 0;
@@ -99,7 +100,7 @@ _lc_join(__map_t, init)(__map_t *self, size_t icap, uint64_t (*hash)(K),
  * @param cap  new number of buckets to allocate
  */
 static inline void
-_lc_join(__map_t, rehash)(__map_t *self, size_t cap) {
+_lc_membfunc(rehash)(Self *self, size_t cap) {
   ASSERT((self != NULL), "Trying to call 'resize' on a NULL map\n");
   __node_t **new_buckets = (__node_t **)calloc(cap, sizeof(__node_t *));
   __node_t **old_buckets = self->buckets;
@@ -140,9 +141,9 @@ _lc_join(__map_t, rehash)(__map_t *self, size_t cap) {
  * @param val  value associated to the key
  */
 static inline bool
-_lc_join(__map_t, insert)(__map_t *self, K key, V val) {
+_lc_membfunc(insert)(Self *self, K key, V val) {
   if ((float)self->size / (float)self->capacity > _lc_nodemap_lf)
-    _lc_join(__map_t, rehash)(self, self->capacity * 2);
+    _lc_membfunc(rehash)(self, self->capacity * 2);
   uint64_t h = self->hash(key);
 #if defined(_lc_profile_enabled)
   self->hash_or |= h;
@@ -178,7 +179,7 @@ _lc_join(__map_t, insert)(__map_t *self, K key, V val) {
  * @param key  key to check
  */
 static inline bool
-_lc_join(__map_t, contains)(__map_t *self, K key) {
+_lc_membfunc(contains)(Self *self, K key) {
   uint64_t h = self->hash(key);
   size_t index = (size_t)(h % self->capacity);
   __node_t *cur = self->buckets[index];
@@ -198,7 +199,7 @@ _lc_join(__map_t, contains)(__map_t *self, K key) {
  * @param key  key to find
  */
 static inline V *
-_lc_join(__map_t, find)(__map_t *self, K key) {
+_lc_membfunc(find)(Self *self, K key) {
   uint64_t h = self->hash(key);
   size_t index = (size_t)(h % self->capacity);
   __node_t *cur = self->buckets[index];
@@ -220,8 +221,8 @@ _lc_join(__map_t, find)(__map_t *self, K key) {
  * @param out  pointer for value copying
  */
 static inline bool
-_lc_join(__map_t, get)(__map_t *self, K key, V *out) {
-  V *tmp = _lc_join(__map_t, find)(self, key);
+_lc_membfunc(get)(Self *self, K key, V *out) {
+  V *tmp = _lc_membfunc(find)(self, key);
   if (tmp) {
     *out = *tmp;
     return true;
@@ -238,7 +239,7 @@ _lc_join(__map_t, get)(__map_t *self, K key, V *out) {
  * @param key  key to remove
  */
 static inline bool
-_lc_join(__map_t, remove)(__map_t *self, K key) {
+_lc_membfunc(remove)(Self *self, K key) {
   uint64_t h = self->hash(key);
   size_t index = (size_t)(h % self->capacity);
   __node_t *cur = self->buckets[index];
@@ -274,7 +275,7 @@ _lc_join(__map_t, remove)(__map_t *self, K key) {
  * @param self pointer to the map
  */
 static inline void
-_lc_join(__map_t, destroy)(__map_t *self) {
+_lc_membfunc(destroy)(Self *self) {
   if (!self)
     return;
   for (size_t i = 0; i < self->capacity; i++) {
@@ -294,6 +295,7 @@ _lc_join(__map_t, destroy)(__map_t *self) {
   memset(self, 0, sizeof(*self));
 }
 
+#undef Self
 #undef __node_t
 #undef __map_t
 #undef K

@@ -16,18 +16,19 @@ extern "C" {
 #endif // _lc_bst_pfx
 
 #define __bsnode_t _lc_join(_lc_bst_pfx, bsnode)
+#define Self __bstree_t
 
 typedef struct __bsnode_t {
   struct __bsnode_t *l, *r;
   T data;
 } __bsnode_t;
 
-typedef struct __bstree_t {
+typedef struct Self {
   size_t size;
   __bsnode_t *root;
   int (*cmp)(T, T);
   void (*dropfn)(T);
-} __bstree_t;
+} Self;
 
 /**
  * @brief initializes a binary search tree
@@ -37,7 +38,7 @@ typedef struct __bstree_t {
  * @param drop function used to deallocate elements (optional)
  */
 static inline void
-_lc_join(__bstree_t, init)(__bstree_t *self, int (*cmp)(T, T),
+_lc_membfunc(init)(__bstree_t *self, int (*cmp)(T, T),
                            void (*drop)(T)) {
   ASSERT((self != NULL), "Trying to init a NULL binary search tree\n");
   self->size = 0;
@@ -55,7 +56,7 @@ _lc_join(__bstree_t, init)(__bstree_t *self, int (*cmp)(T, T),
  * @param data element to insert
  */
 static inline void
-_lc_join(__bstree_t, insert)(__bstree_t *self, T data) {
+_lc_membfunc(insert)(__bstree_t *self, T data) {
   ASSERT((self != NULL), "Trying to insert into a NULL binary search tree\n");
   ASSERT((self->cmp != NULL),
          "Trying to insert into a binary search tree without cmp function");
@@ -85,7 +86,7 @@ _lc_join(__bstree_t, insert)(__bstree_t *self, T data) {
  * @param data element to find
  */
 static inline T *
-_lc_join(__bstree_t, find)(__bstree_t *self, T data) {
+_lc_membfunc(find)(__bstree_t *self, T data) {
   ASSERT((self != NULL), "Trying to call find on a NULL tree\n");
   ASSERT((self->cmp != NULL),
          "Trying to call find on a tree with no cmp function\n");
@@ -108,7 +109,7 @@ _lc_join(__bstree_t, find)(__bstree_t *self, T data) {
  * @param data element to remove
  */
 static inline bool
-_lc_join(__bstree_t, remove)(__bstree_t *self, T data) {
+_lc_membfunc(remove)(__bstree_t *self, T data) {
   ASSERT((self != NULL), "Trying to call 'remove' on a NULL tree\n");
   ASSERT((self->cmp != NULL),
          "Trying to call 'remove' on a tree with no cmp function\n");
@@ -175,7 +176,7 @@ _lc_join(__bsnode_t, depth_rec)(__bsnode_t *n, size_t curr) {
  * @param self pointer to the tree
  */
 static inline size_t
-_lc_join(__bstree_t, depth)(__bstree_t *self) {
+_lc_membfunc(depth)(__bstree_t *self) {
   ASSERT((self != NULL), "Trying to call depth on a NULL tree\n");
   return _lc_join(__bsnode_t, depth_rec)(self->root, 0);
 }
@@ -186,7 +187,7 @@ _lc_join(__bstree_t, depth)(__bstree_t *self) {
  * @param self pointer to the tree
  */
 static inline T
-_lc_join(__bstree_t, max)(__bstree_t *self) {
+_lc_membfunc(max)(__bstree_t *self) {
   ASSERT((self != NULL), "Trying to call max on a NULL tree\n");
   __bsnode_t *n = self->root;
   while (n->r)
@@ -200,7 +201,7 @@ _lc_join(__bstree_t, max)(__bstree_t *self) {
  * @param self pointer to the tree
  */
 static inline T
-_lc_join(__bstree_t, min)(__bstree_t *self) {
+_lc_membfunc(min)(__bstree_t *self) {
   ASSERT((self != NULL), "Trying to call min on a NULL tree\n");
   __bsnode_t *n = self->root;
   while (n->l)
@@ -230,7 +231,7 @@ _lc_join(__bsnode_t, io_visit)(__bsnode_t *n, void (*visitor)(T *)) {
  * @param visitor function applied to each node
  */
 static inline void
-_lc_join(__bstree_t, visit_in_order)(__bstree_t *self, void (*visitor)(T *)) {
+_lc_membfunc(visit_in_order)(__bstree_t *self, void (*visitor)(T *)) {
   ASSERT((self != NULL), "Trying to call visit_in_order on a NULL tree\n");
   _lc_join(__bsnode_t, io_visit)(self->root, visitor);
 }
@@ -258,7 +259,7 @@ _lc_join(__bsnode_t, pre_visit)(__bsnode_t *n, void (*visitor)(T *)) {
  * @param visitor function applied to each node
  */
 static inline void
-_lc_join(__bstree_t, visit_pre_order)(__bstree_t *self, void (*visitor)(T *)) {
+_lc_membfunc(visit_pre_order)(__bstree_t *self, void (*visitor)(T *)) {
   ASSERT((self != NULL), "Trying to call visit_pre_order on a NULL tree\n");
   _lc_join(__bsnode_t, pre_visit)(self->root, visitor);
 }
@@ -286,7 +287,7 @@ _lc_join(__bsnode_t, post_visit)(__bsnode_t *n, void (*visitor)(T *)) {
  * @param visitor function applied to each node
  */
 static inline void
-_lc_join(__bstree_t, visit_post_order)(__bstree_t *self, void (*visitor)(T *)) {
+_lc_membfunc(visit_post_order)(__bstree_t *self, void (*visitor)(T *)) {
   ASSERT((self != NULL), "Trying to call visit_post_order on a NULL tree\n");
   _lc_join(__bsnode_t, post_visit)(self->root, visitor);
 }
@@ -315,12 +316,13 @@ _lc_join(__bsnode_t, destroy_rec)(__bsnode_t *n, void (*drop)(T)) {
  * @param self pointer to the tree
  */
 static inline void
-_lc_join(__bstree_t, destroy)(__bstree_t *self) {
+_lc_membfunc(destroy)(__bstree_t *self) {
   ASSERT((self != NULL), "Trying to call destroy on a NULL tree\n");
   _lc_join(__bsnode_t, destroy_rec)(self->root, self->dropfn);
 }
 
 #undef T
+#undef Self
 #undef __bsnode_t
 #undef __bstree_t
 #undef _lc_bst_pfx

@@ -43,6 +43,7 @@ extern "C" {
 #endif // _lc_flatmap_pfx
 
 #define __entry_t _lc_join(_lc_flatmap_pfx, node)
+#define Self __map_t
 
 typedef struct __entry_t {
   K key;
@@ -66,7 +67,7 @@ typedef struct __map_t {
  * doesn't provide a custom one.
  */
 static inline bool
-_lc_join(__map_t, default_key_eq)(K a, K b) {
+_lc_membfunc(default_key_eq)(K a, K b) {
   return a == b;
 }
 
@@ -75,7 +76,7 @@ _lc_join(__map_t, default_key_eq)(K a, K b) {
  * inside the map (still experimenting)
  */
 static inline size_t
-_lc_join(__map_t, fib_hash)(uint64_t hash, size_t cap) {
+_lc_membfunc(fib_hash)(uint64_t hash, size_t cap) {
   return (size_t)(hash * _lc_fib_const) >> (__builtin_clzll(cap) + 1);
 }
 
@@ -90,7 +91,7 @@ _lc_join(__map_t, fib_hash)(uint64_t hash, size_t cap) {
  * @param dv   function to deallocate values (optional)
  */
 static inline void
-_lc_join(__map_t, init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
+_lc_membfunc(init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
                         bool (*eq)(K, K), void (*dk)(K), void (*dv)(V)) {
   ASSERT((self != NULL), "Trying to call init on a NULL map\n");
   ASSERT((hash != NULL), "Trying to initialise a map without a hash func\n");
@@ -101,7 +102,7 @@ _lc_join(__map_t, init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
   memset(self, 0, sizeof(*self));
   self->capacity = cap == 0 ? 32 : cap;
   self->hash = hash;
-  self->key_eq = eq ? eq : _lc_join(__map_t, default_key_eq);
+  self->key_eq = eq ? eq : _lc_membfunc(default_key_eq);
   self->drop_k = dk;
   self->drop_v = dv;
   self->slots = (__entry_t *)calloc(self->capacity, sizeof(__entry_t));
@@ -115,8 +116,8 @@ _lc_join(__map_t, init)(__map_t *self, size_t cap, uint64_t (*hash)(K),
  * @param key  key to find
  */
 static inline V *
-_lc_join(__map_t, find)(__map_t *self, K key) {
-  size_t index = _lc_join(__map_t, fib_hash)(self->hash(key), self->capacity);
+_lc_membfunc(find)(__map_t *self, K key) {
+  size_t index = _lc_membfunc(fib_hash)(self->hash(key), self->capacity);
   uint8_t dist = 0;
   for (;;) {
     __entry_t *slot = &self->slots[index];
@@ -139,13 +140,13 @@ _lc_join(__map_t, find)(__map_t *self, K key) {
  * @param key  key to find
  */
 static inline bool
-_lc_join(__map_t, contains)(__map_t *self, K key) {
-  return _lc_join(__map_t, find)(self, key) != NULL;
+_lc_membfunc(contains)(__map_t *self, K key) {
+  return _lc_membfunc(find)(self, key) != NULL;
 }
 
 static inline bool
-_lc_join(__map_t, get)(__map_t *self, K key, V *out) {
-  V *t = _lc_join(__map_t, find)(self, key);
+_lc_membfunc(get)(__map_t *self, K key, V *out) {
+  V *t = _lc_membfunc(find)(self, key);
   if (!t)
     return false;
   *out = *t;
@@ -153,7 +154,7 @@ _lc_join(__map_t, get)(__map_t *self, K key, V *out) {
 }
 
 // Declaration for rehashing
-static inline bool _lc_join(__map_t, insert)(__map_t *self, K key, V value);
+static inline bool _lc_membfunc(insert)(__map_t *self, K key, V value);
 
 /**
  * @brief rehashes the map, requires new cap to be higher than the current
@@ -163,7 +164,7 @@ static inline bool _lc_join(__map_t, insert)(__map_t *self, K key, V value);
  * @param new_cap new capacity for rehashing
  */
 static inline void
-_lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
+_lc_membfunc(rehash)(__map_t *self, size_t new_cap) {
   ASSERT((new_cap > self->capacity),
          "Trying to resize the table with a smaller capacity\n");
   __entry_t *new_slots = (__entry_t *)calloc(new_cap, sizeof(__entry_t));
@@ -173,7 +174,7 @@ _lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
   self->slots = new_slots;
   for (size_t i = 0; i < old_cap; i++) {
     if (old_slots[i].in_use) {
-      _lc_join(__map_t, insert)(self, old_slots[i].key, old_slots[i].value);
+      _lc_membfunc(insert)(self, old_slots[i].key, old_slots[i].value);
     }
   }
   free(old_slots);
@@ -189,11 +190,11 @@ _lc_join(__map_t, rehash)(__map_t *self, size_t new_cap) {
  * @param value value to insert
  */
 static inline bool
-_lc_join(__map_t, insert)(__map_t *self, K key, V value) {
+_lc_membfunc(insert)(__map_t *self, K key, V value) {
   if ((float)self->size / self->capacity >= _lc_flatmap_lf) {
-    _lc_join(__map_t, rehash)(self, self->capacity << 1);
+    _lc_membfunc(rehash)(self, self->capacity << 1);
   }
-  size_t index = _lc_join(__map_t, fib_hash)(self->hash(key), self->capacity);
+  size_t index = _lc_membfunc(fib_hash)(self->hash(key), self->capacity);
   uint8_t dist = 0;
   __entry_t new_entry = {key, value, true, dist};
   for (;;) {
@@ -233,8 +234,8 @@ _lc_join(__map_t, insert)(__map_t *self, K key, V value) {
  * @param key  key to remove
  */
 static inline bool
-_lc_join(__map_t, remove)(__map_t *self, K key) {
-  size_t index = _lc_join(__map_t, fib_hash)(key, self->capacity);
+_lc_membfunc(remove)(__map_t *self, K key) {
+  size_t index = _lc_membfunc(fib_hash)(key, self->capacity);
   uint8_t dist = 0;
   for (;;) {
     __entry_t *slot = &self->slots[index];
@@ -270,7 +271,7 @@ _lc_join(__map_t, remove)(__map_t *self, K key) {
  * @param self pointer to the map
  */
 static inline void
-_lc_join(__map_t, destroy)(__map_t *self) {
+_lc_membfunc(destroy)(__map_t *self) {
   if (!self)
     return;
   if (self->slots) {

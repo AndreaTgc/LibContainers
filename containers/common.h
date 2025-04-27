@@ -41,4 +41,6 @@
 #define _lc_concat(a, b) _lc_cat(a, b)
 #define _lc_join(a, b) _lc_concat(a, _lc_concat(_, b))
 
+#define _lc_membfunc(name) _lc_join(Self, name)
+
 #endif // COMMON_H_

@@ -1,4 +1,5 @@
 #include "common.h"
+#include <stdbool.h>
 
 // @Author: Andrea Colombo (AndreaTgc)
 // Generic type-safe hash set
@@ -30,6 +31,7 @@ extern "C" {
 #endif // _lc_nodeset_lf
 
 #define __node_t _lc_join(_lc_nodeset_pfx, node)
+#define Self __set_t
 
 // Generic node used for open hashing
 typedef struct __node_t {
@@ -62,7 +64,7 @@ typedef struct __set_t {
  * custom one
  */
 static inline bool
-_lc_join(__set_t, fallback_eq)(T a, T b) {
+_lc_membfunc(fallback_eq)(T a, T b) {
   return a == b;
 }
 
@@ -76,7 +78,7 @@ _lc_join(__set_t, fallback_eq)(T a, T b) {
  * @param eq   equality function for type T
  */
 static inline void
-_lc_join(__set_t, init)(__set_t *self, size_t icap, uint64_t (*hash)(T),
+_lc_membfunc(init)(__set_t *self, size_t icap, uint64_t (*hash)(T),
                         void (*drop)(T), bool (*eq)(T, T)) {
   ASSERT((self != NULL), "Trying to call 'init' on a NULL set\n");
   ASSERT((hash != NULL),
@@ -85,7 +87,7 @@ _lc_join(__set_t, init)(__set_t *self, size_t icap, uint64_t (*hash)(T),
   self->capacity = icap == 0 ? 32 : icap;
   self->hash = hash;
   self->drop = drop;
-  self->eq = eq == NULL ? _lc_join(__set_t, fallback_eq) : eq;
+  self->eq = eq == NULL ? _lc_membfunc(fallback_eq) : eq;
   self->buckets = (__node_t **)calloc(self->capacity, sizeof(__node_t *));
 #if defined(_lc_profile_enabled)
   self->hash_or = 0;
@@ -103,7 +105,7 @@ _lc_join(__set_t, init)(__set_t *self, size_t icap, uint64_t (*hash)(T),
  * @param cap  new set capacity
  */
 static inline void
-_lc_join(__set_t, rehash)(__set_t *self, size_t cap) {
+_lc_membfunc(rehash)(__set_t *self, size_t cap) {
   ASSERT((self != NULL), "Trying to call 'resize' on a NULL set\n");
   __node_t **new_buckets = (__node_t **)calloc(cap, sizeof(__node_t *));
   __node_t **old_buckets = self->buckets;
@@ -146,12 +148,12 @@ _lc_join(__set_t, rehash)(__set_t *self, size_t cap) {
  * @param key  key to add to the set
  */
 static inline bool
-_lc_join(__set_t, insert)(__set_t *self, T key) {
+_lc_membfunc(insert)(__set_t *self, T key) {
   ASSERT((self != NULL), "Trying to call 'insert' on a NULL set\n");
   ASSERT((self->eq != NULL && self->hash != NULL),
          "Trying to call 'insert' on a set that's not correctly initialised\n");
   if (((float)self->size / (float)self->capacity) > _lc_nodeset_lf)
-    _lc_join(__set_t, rehash)(self, self->capacity * 2);
+    _lc_membfunc(rehash)(self, self->capacity * 2);
   uint64_t h = self->hash(key);
 #if defined(_lc_profile_enabled)
   s->hash_or |= h;
@@ -191,7 +193,7 @@ _lc_join(__set_t, insert)(__set_t *self, T key) {
  * @param key  key that has to be checked
  */
 static inline bool
-_lc_join(__set_t, contains)(__set_t *self, T key) {
+_lc_membfunc(contains)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
 #if defined(_lc_profile_enabled)
   s->hash_or |= h;
@@ -208,6 +210,29 @@ _lc_join(__set_t, contains)(__set_t *self, T key) {
 }
 
 /**
+ * @brief checks if a set is a subset of another
+ *
+ * @param self  pointer to candidate subset
+ * @param other pointer to other set
+ */
+static inline bool
+_lc_membfunc(is_subset_of)(__set_t *self, __set_t *other) {
+  ASSERT((self != NULL && other != NULL),
+         "Trying to call 'is_subset_of' with at least one NULL set");
+  if (self->size > other->size)
+    return false;
+  for (size_t i = 0; i < self->capacity; i++) {
+    __node_t *cur = self->buckets[i];
+    while (cur) {
+      if (!_lc_membfunc(contains)(other, cur->data))
+        return false;
+      cur = cur->next;
+    }
+  }
+  return true;
+}
+
+/**
  * @brief returns the pointer to the key inside the set (NULL if the key is not
  * inside the set)
  *
@@ -215,7 +240,7 @@ _lc_join(__set_t, contains)(__set_t *self, T key) {
  * @param key  key to find
  */
 static inline T *
-_lc_join(__set_t, find)(__set_t *self, T key) {
+_lc_membfunc(find)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
 #if defined(_lc_profile_enabled)
   self->hash_or |= h;
@@ -253,7 +278,7 @@ _lc_join(__set_t, find)(__set_t *self, T key) {
  * @param key  key to remove from the set
  */
 static inline bool
-_lc_join(__set_t, remove)(__set_t *self, T key) {
+_lc_membfunc(remove)(__set_t *self, T key) {
   uint64_t h = self->hash(key);
   size_t index = (size_t)(h % self->capacity);
 #if defined(_lc_profile_enabled)
@@ -304,7 +329,7 @@ _lc_join(__set_t, remove)(__set_t *self, T key) {
  * @param self pointer to the set
  */
 static inline void
-_lc_join(__set_t, destroy)(__set_t *self) {
+_lc_membfunc(destroy)(__set_t *self) {
   if (!self)
     return;
   for (size_t i = 0; i < self->capacity; i++) {
@@ -332,7 +357,7 @@ _lc_join(__set_t, destroy)(__set_t *self) {
 // has stuck bits, the ideal case is where hash_or tends to 0xFFFF
 // and hash_and to 0
 static inline void
-_lc_join(__set_t, print_profiling_data)(__set_t *self, const char *name) {
+_lc_membfunc(print_profiling_data)(__set_t *self, const char *name) {
   fprintf(stdout, "[%s profiling data] set ptr = %p\n", name, (void *)self);
   fprintf(stdout, "[Running hash or] %04llx\n", self->hash_or);
   fprintf(stdout, "[Running hash and] %04llx\n", self->hash_and);
@@ -364,6 +389,7 @@ _lc_join(__set_t, print_profiling_data)(__set_t *self, const char *name) {
 #endif // _lc_profile_enabled
 
 #undef T
+#undef Self
 #undef __node_t
 #undef __set_t
 #undef _lc_nodeset_pfx
