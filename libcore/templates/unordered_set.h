@@ -140,6 +140,7 @@ _lcore_mfunc(rehash)(Self *self, uint new_capacity) {
       uint b = h & (self->capacity - 1);
       cur->next = self->buckets[b];
       self->buckets[b] = cur;
+      cur = nxt;
     }
   }
   free(old_buckets);

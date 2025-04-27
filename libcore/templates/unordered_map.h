@@ -46,10 +46,11 @@ typedef struct Self {
 // clang-format off
 LCORE_API void _lcore_mfunc(init)(Self* self, usize capacity);
 LCORE_API void _lcore_mfunc(destroy)(Self* self);
+LCORE_API void _lcore_mfunc(rehash)(Self* self, usize new_capacity);
+LCORE_API void _lcore_mfunc(set)(Self* self, K key, V value);
 LCORE_API bool _lcore_mfunc(insert)(Self* self, K key, V value);
 LCORE_API bool _lcore_mfunc(remove)(Self* self, K key, V value);
-LCORE_API bool _lcore_mfunc(set)(Self* self, K key, V value);
-LCORE_API V    _lcore_mfunc(find)(Self* self);
+LCORE_API V*   _lcore_mfunc(find)(Self* self, K key);
 // clang-format on
 
 LCORE_API void
@@ -78,6 +79,30 @@ _lcore_mfunc(destroy)(Self *self) {
   }
   free(self->buckets);
   memset(self, 0, sizeof(*self));
+}
+
+LCORE_API void
+_lcore_mfunc(rehash)(Self *self, usize new_capacity) {
+  if (new_capacity == 0)
+    return;
+  _Node **new_buckets = lcore_calloc(_Node *, sizeof(_Node *), new_capacity);
+  if (!new_buckets)
+    return;
+  _Node **old_buckets = self->buckets;
+  usize old_capacity = self->capacity;
+  self->capacity = new_capacity;
+  for (usize i = 0; i < old_capacity; i++) {
+    _Node *cur = old_buckets[i];
+    while (cur) {
+      _Node *next = cur->next;
+      u64 h = lcore_hash_fn(cur->key);
+      usize b = h & (old_capacity - 1);
+      cur->next = new_buckets[b];
+      new_buckets[b] = cur;
+      cur = next;
+    }
+  }
+  free(old_buckets);
 }
 
 LCORE_API bool
@@ -126,4 +151,26 @@ _lcore_mfunc(remove)(Self *self, K key) {
     cur = cur->next;
   }
   return false;
+}
+
+LCORE_API void
+_lcore_mfunc(set)(Self *self, K key, V value) {
+  V *val = _lcore_mfunc(find)(self, key);
+  if (!val)
+    _lcore_mfunc(insert)(self, key, value);
+  else
+    *val = value;
+}
+
+LCORE_API V *
+_lcore_mfunc(find)(Self *self, K key) {
+  u64 h = lcore_hash_fn(key);
+  usize b = h & (self->capacity - 1);
+  _Node *cur = self->buckets[b];
+  while (cur) {
+    if (lcore_eq_fn(cur->key, key))
+      return &cur->value;
+    cur = cur->next;
+  }
+  return NULL;
 }
