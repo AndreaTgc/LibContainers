@@ -105,6 +105,15 @@ _lcore_mfunc(rehash)(Self *self, usize new_capacity) {
   free(old_buckets);
 }
 
+LCORE_API void
+_lcore_mfunc(set)(Self *self, K key, V value) {
+  V *val = _lcore_mfunc(find)(self, key);
+  if (!val)
+    _lcore_mfunc(insert)(self, key, value);
+  else
+    *val = value;
+}
+
 LCORE_API bool
 _lcore_mfunc(insert)(Self *self, K key, V value) {
   u64 h = lcore_hash_fn(key);
@@ -151,15 +160,6 @@ _lcore_mfunc(remove)(Self *self, K key) {
     cur = cur->next;
   }
   return false;
-}
-
-LCORE_API void
-_lcore_mfunc(set)(Self *self, K key, V value) {
-  V *val = _lcore_mfunc(find)(self, key);
-  if (!val)
-    _lcore_mfunc(insert)(self, key, value);
-  else
-    *val = value;
 }
 
 LCORE_API V *

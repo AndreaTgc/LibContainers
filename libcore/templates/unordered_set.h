@@ -1,6 +1,5 @@
 #include "../libcore.h"
 #include "_lc_templating.h"
-#include <cstdbool>
 
 #ifndef T
 #define T int

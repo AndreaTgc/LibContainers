@@ -26,7 +26,7 @@ LCORE_API void _lcore_mfunc(remove_at)(Self* self, usize index);
 LCORE_API void _lcore_mfunc(qsort)(Self* self, int (*cmp)(const T*, const T*));
 LCORE_API void _lcore_mfunc(destroy)(Self* self);
 LCORE_API T    _lcore_mfunc(at)(Self *self, usize index);
-LCORE_API T    _lcore_mfunc(pop_back)(Self *self, usize index);
+LCORE_API T    _lcore_mfunc(pop_back)(Self *self);
 LCORE_API bool _lcore_mfunc(check_health)(Self* self);
 // clang-format on
 

@@ -1,7 +1,8 @@
-#if !defined(LCORE_H)
+#ifndef LCORE_H
 #define LCORE_H
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@ typedef char*        c_str;
 #define LCORE_API static inline
 
 // Basic wrappers around malloc and calloc for more readable code
-#define lcore_malloc(T, S) ((T*)malloc(S))
-#define lcore_calloc(T, Tsize, Count) ((T*)calloc(Count, Tsize))
+#define lcore_malloc(T, S) ((T *)malloc(S))
+#define lcore_calloc(T, Tsize, Count) ((T *)calloc(Count, Tsize))
 
 #endif // LCORE_H
