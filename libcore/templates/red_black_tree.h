@@ -3,143 +3,152 @@
 
 #ifndef T
 #define T int
-#endif
+#endif // T
 
 #ifndef lcore_pfx
-#define lcore_pfx _lcore_join(T, rb_tree)
-#endif
+#define lcore_pfx _lcore_join(T, rbtree)
+#endif // lcore_pfx
 
 #ifndef lcore_cmp_fn
 #define lcore_cmp_fn(a, b) ((a) - (b))
-#endif
+#endif // lcore_cmp_fn
 
 #ifndef lcore_drop_fn
 #define lcore_drop_fn(x)
-#endif
+#endif // lcore_drop_fn
 
 #define Self lcore_pfx
 #define _Node _lcore_join(Self, node)
 
-// ========== Node and Tree Types ==========
+// ========== STRUCTS DEFINITIONS ============== //
 
 typedef struct _Node {
-  struct _Node *parent, *left, *right;
-  u8 red; // 1 = Red, 0 = Black
-  T data;
+  struct _Node *left, *right; // left and right children
+  struct _Node *parent;       // parent node
+  u8 red;                     // node color (either red (1) or black (0))
+  T data;                     // node payload
 } _Node;
 
 typedef struct Self {
-  _Node *root;
-  usize size;
+  _Node *root; // root of the tree
+  usize size;  // number of nodes
 } Self;
 
-// ========== Public API (Visible to User) ==========
-// These functions are meant to be used to interact with the tree
-// structure, you should never access the struct memebers directly
+// ============== PUBLIC API ==================== //
+// These functions are meant to be used to interact with the tree structure
+// you are NOT supposed to modify the struct memebers directly.
 
-// Initializes the empty tree
 LCORE_API void _lcore_mfunc(init)(Self *self);
-// Inserts a new element into the tree, returns false if the insertion fails,
-LCORE_API bool _lcore_mfunc(insert)(Self *self, T value);
-// Removes an element from the tree, returns false if the removal fails
-LCORE_API bool _lcore_mfunc(remove)(Self *self, T value);
-// Checks whether an element is part of the tree
-LCORE_API bool _lcore_mfunc(contains)(Self *self, T value);
-// Deallocates the tree-related memory (all nodes)
 LCORE_API void _lcore_mfunc(destroy)(Self *self);
+LCORE_API u8 _lcore_mfunc(insert)(Self *self, T val);
+LCORE_API u8 _lcore_mfunc(remove)(Self *self, T val);
+LCORE_API u8 _lcore_mfunc(contains)(Self *self, T val);
 
-// ========== Internal Helpers (Private) ==========
-// These functions are not meant to be used by the user, they're just
-// helper function that make the Public API implementation easier to read and
-// maintain
+// ============= PRIVATE FUNCTIONS ============== //
+// These functions are not meant to be called directly, they are helpers used
+// inside the public API implementation
 
-LCORE_API _Node *_lcore_mfunc(make_node)(T value);
-LCORE_API void _lcore_mfunc(rotate_left)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc(rotate_right)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc(insert_fixup)(Self *self, _Node *z);
-LCORE_API void _lcore_mfunc(delete_fixup)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc(transplant)(Self *self, _Node *u, _Node *v);
-LCORE_API _Node *_lcore_mfunc(minimum)(_Node *node);
-LCORE_API void _lcore_mfunc(destroy_recursive)(_Node *node);
+LCORE_API _Node *_lcore_mfunc_priv(max_node)(_Node *x);
+LCORE_API _Node *_lcore_mfunc_priv(min_node)(_Node *x);
+LCORE_API _Node *_lcore_mfunc_priv(new_node)(T value);
+LCORE_API void _lcore_mfunc_priv(transplant)(Self *self, _Node *x, _Node *y);
+LCORE_API void _lcore_mfunc_priv(rotate_left)(Self *self, _Node *x);
+LCORE_API void _lcore_mfunc_priv(rotate_right)(Self *self, _Node *x);
+LCORE_API void _lcore_mfunc_priv(fix_insert)(Self *self, _Node *x);
+LCORE_API void _lcore_mfunc_priv(fix_delete)(Self *self, _Node *x, _Node *x_p);
 
-// ========== Public API Implementations ==========
+// ========== PUBLIC API IMPLEMENTATION ========= //
 
 LCORE_API void
 _lcore_mfunc(init)(Self *self) {
-  self->root = NULL;
-  self->size = 0;
+  memset(self, 0, sizeof(*self));
 }
 
-LCORE_API bool
-_lcore_mfunc(insert)(Self *self, T value) {
-  _Node *z = _lcore_mfunc(make_node)(value);
-  if (!z)
-    return false;
+LCORE_API void
+_lcore_mfunc(destroy)(Self *self) {
+}
 
-  _Node *y = NULL;
-  _Node *x = self->root;
+LCORE_API u8
+_lcore_mfunc(insert)(Self *self, T val) {
+  _Node *cur = self->root;
+  _Node *parent = NULL;
 
-  while (x) {
-    y = x;
-    int cmp = lcore_cmp_fn(z->data, x->data);
-    if (cmp < 0)
-      x = x->left;
-    else if (cmp > 0)
-      x = x->right;
-    else {
-      lcore_drop_fn(z->data);
-      free(z);
-      return false;
-    }
+  // Traverse to find the correct insertion point
+  while (cur) {
+    parent = cur;
+    int cmp = lcore_cmp_fn(val, cur->data);
+    if (cmp == 0)
+      return 0; // Value already exists
+    else if (cmp < 0)
+      cur = cur->left;
+    else
+      cur = cur->right;
+  }
+  _Node *n = _lcore_mfunc_priv(new_node)(val);
+  if (!n)
+    return 0; // Allocation failed
+  n->parent = parent;
+  if (!parent) {
+    self->root = n; // Tree was empty
+  } else if (lcore_cmp_fn(val, parent->data) < 0) {
+    parent->left = n;
+  } else {
+    parent->right = n;
   }
 
-  z->parent = y;
-  if (!y)
-    self->root = z;
-  else if (lcore_cmp_fn(z->data, y->data) < 0)
-    y->left = z;
-  else
-    y->right = z;
-
-  _lcore_mfunc(insert_fixup)(self, z);
-  self->size++;
-  return true;
+  // Fix any red-black tree violations
+  _lcore_mfunc_priv(fix_insert)(self, n);
+  self->size += 1;
+  return 1; // Successfully inserted
 }
 
-LCORE_API bool
-_lcore_mfunc(remove)(Self *self, T value) {
+LCORE_API u8
+_lcore_mfunc(remove)(Self *self, T val) {
   _Node *z = self->root;
   while (z) {
-    int cmp = lcore_cmp_fn(value, z->data);
-    if (cmp == 0)
+    int c = lcore_cmp_fn(val, z->data);
+    if (c == 0)
       break;
-    z = (cmp < 0) ? z->left : z->right;
+    else if (c < 0)
+      z = z->left;
+    else
+      z = z->right;
   }
 
   if (!z)
-    return false;
+    return 0; // Value not found
 
   _Node *y = z;
   _Node *x = NULL;
+  _Node *x_parent = NULL;
   u8 y_original_red = y->red;
 
   if (!z->left) {
     x = z->right;
-    _lcore_mfunc(transplant)(self, z, z->right);
+    x_parent = z->parent;
+    _lcore_mfunc_priv(transplant)(self, z, z->right);
   } else if (!z->right) {
     x = z->left;
-    _lcore_mfunc(transplant)(self, z, z->left);
+    x_parent = z->parent;
+    _lcore_mfunc_priv(transplant)(self, z, z->left);
   } else {
-    y = _lcore_mfunc(minimum)(z->right);
+    y = _lcore_mfunc_priv(min_node)(z->right);
     y_original_red = y->red;
     x = y->right;
-    if (y->parent != z) {
-      _lcore_mfunc(transplant)(self, y, y->right);
+
+    if (y->parent == z) {
+      if (x)
+        x->parent = y;
+      x_parent = y;
+    } else {
+      _lcore_mfunc_priv(transplant)(self, y, y->right);
       y->right = z->right;
       if (y->right)
         y->right->parent = y;
+      x_parent = y->parent;
     }
-    _lcore_mfunc(transplant)(self, z, y);
+
+    _lcore_mfunc_priv(transplant)(self, z, y);
     y->left = z->left;
     if (y->left)
       y->left->parent = y;
@@ -148,114 +157,156 @@ _lcore_mfunc(remove)(Self *self, T value) {
 
   lcore_drop_fn(z->data);
   free(z);
-
-  if (y_original_red == 0 && x)
-    _lcore_mfunc(delete_fixup)(self, x);
-
   self->size--;
-  return true;
+
+  if (y_original_red == 0)
+    _lcore_mfunc_priv(fix_delete)(self, x, x_parent);
+
+  return 1;
 }
 
-LCORE_API bool
-_lcore_mfunc(contains)(Self *self, T value) {
+LCORE_API u8
+_lcore_mfunc(contains)(Self *self, T val) {
   _Node *cur = self->root;
   while (cur) {
-    int cmp = lcore_cmp_fn(value, cur->data);
-    if (cmp == 0)
-      return true;
-    cur = (cmp < 0) ? cur->left : cur->right;
+    int c = lcore_cmp_fn(cur->data, val);
+    if (c == 0)
+      return 1;
+    cur = c > 0 ? cur->left : cur->right;
   }
-  return false;
+  return 0;
 }
 
-LCORE_API void
-_lcore_mfunc(destroy)(Self *self) {
-  _lcore_mfunc(destroy_recursive)(self->root);
-  self->root = NULL;
-  self->size = 0;
-}
-
-// ========== Internal Helper Implementations ==========
+// ========= PRIVATE API IMPLEMENTATION ========= //
 
 LCORE_API _Node *
-_lcore_mfunc(make_node)(T value) {
-  _Node *node = lcore_malloc(_Node, sizeof(_Node));
-  if (!node)
+_lcore_mfunc_priv(max_node)(_Node *x) {
+  _Node *tmp = x;
+  while (tmp->right)
+    tmp = tmp->right;
+  return tmp;
+}
+
+LCORE_API _Node *
+_lcore_mfunc_priv(min_node)(_Node *x) {
+  _Node *tmp = x;
+  while (tmp->left)
+    tmp = tmp->left;
+  return tmp;
+}
+
+LCORE_API _Node *
+_lcore_mfunc_priv(new_node)(T value) {
+  _Node *n = lcore_malloc(_Node, sizeof(_Node));
+  if (!n)
     return NULL;
-  node->parent = node->left = node->right = NULL;
-  node->red = 1; // New node is red
-  node->data = value;
-  return node;
+  n->left = n->right = n->parent = NULL;
+  n->red = 1;
+  n->data = value;
+  return n;
 }
 
 LCORE_API void
-_lcore_mfunc(rotate_left)(Self *self, _Node *x) {
-  _Node *y = x->right;
-  x->right = y->left;
-  if (y->left)
-    y->left->parent = x;
-  y->parent = x->parent;
+_lcore_mfunc_priv(transplant)(Self *self, _Node *x, _Node *y) {
   if (!x->parent)
     self->root = y;
   else if (x == x->parent->left)
     x->parent->left = y;
   else
     x->parent->right = y;
-  y->left = x;
-  x->parent = y;
+
+  if (y)
+    y->parent = x->parent;
 }
 
 LCORE_API void
-_lcore_mfunc(rotate_right)(Self *self, _Node *x) {
-  _Node *y = x->left;
-  x->left = y->right;
-  if (y->right)
-    y->right->parent = x;
-  y->parent = x->parent;
+_lcore_mfunc_priv(rotate_left)(Self *self, _Node *x) {
+  _Node *r = x->right;
+  x->right = r->left;
+  if (x->right)
+    x->right->parent = x;
+  r->parent = x->parent;
   if (!x->parent)
-    self->root = y;
-  else if (x == x->parent->right)
-    x->parent->right = y;
+    self->root = r;
+  else if (x == x->parent->left)
+    x->parent->left = r;
   else
-    x->parent->left = y;
-  y->right = x;
-  x->parent = y;
+    x->parent->right = r;
+  r->left = x;
+  x->parent = r;
 }
 
 LCORE_API void
-_lcore_mfunc(insert_fixup)(Self *self, _Node *z) {
-  while (z->parent && z->parent->red) {
-    if (z->parent == z->parent->parent->left) {
-      _Node *y = z->parent->parent->right;
-      if (y && y->red) {
-        z->parent->red = 0;
-        y->red = 0;
-        z->parent->parent->red = 1;
-        z = z->parent->parent;
+_lcore_mfunc_priv(rotate_right)(Self *self, _Node *x) {
+  _Node *l = x->left;
+  x->left = l->right;
+  if (x->left)
+    x->left->parent = x;
+  l->parent = x->parent;
+  if (!x->parent)
+    self->root = l;
+  else if (x == x->parent->right)
+    x->parent->right = l;
+  else
+    x->parent->left = l;
+  l->right = x;
+  x->parent = l;
+}
+
+LCORE_API void
+_lcore_mfunc_priv(fix_insert)(Self *self, _Node *x) {
+  while (x != self->root && x->parent && x->parent->red) {
+    _Node *parent = x->parent;
+    _Node *grandparent = parent->parent;
+
+    if (!grandparent)
+      break; // Needed for safety
+
+    if (parent == grandparent->left) {
+      _Node *uncle = grandparent->right;
+
+      // Case 1: Uncle is red → recolor
+      if (uncle && uncle->red) {
+        parent->red = 0;
+        uncle->red = 0;
+        grandparent->red = 1;
+        x = grandparent;
       } else {
-        if (z == z->parent->right) {
-          z = z->parent;
-          _lcore_mfunc(rotate_left)(self, z);
+        // Case 2: x is right child → left rotate
+        if (x == parent->right) {
+          x = parent;
+          _lcore_mfunc_priv(rotate_left)(self, x);
+          parent = x->parent;
+          grandparent = parent->parent;
         }
-        z->parent->red = 0;
-        z->parent->parent->red = 1;
-        _lcore_mfunc(rotate_right)(self, z->parent->parent);
+
+        // Case 3: x is left child → right rotate
+        parent->red = 0;
+        grandparent->red = 1;
+        _lcore_mfunc_priv(rotate_right)(self, grandparent);
       }
     } else {
-      _Node *y = z->parent->parent->left;
-      if (y && y->red) {
-        z->parent->red = 0;
-        y->red = 0;
-        z->parent->parent->red = 1;
-        z = z->parent->parent;
+      _Node *uncle = grandparent->left;
+
+      // Case 1: Uncle is red → recolor
+      if (uncle && uncle->red) {
+        parent->red = 0;
+        uncle->red = 0;
+        grandparent->red = 1;
+        x = grandparent;
       } else {
-        if (z == z->parent->left) {
-          z = z->parent;
-          _lcore_mfunc(rotate_right)(self, z);
+        // Case 2: x is left child → right rotate
+        if (x == parent->left) {
+          x = parent;
+          _lcore_mfunc_priv(rotate_right)(self, x);
+          parent = x->parent;
+          grandparent = parent->parent;
         }
-        z->parent->red = 0;
-        z->parent->parent->red = 1;
-        _lcore_mfunc(rotate_left)(self, z->parent->parent);
+
+        // Case 3: x is right child → left rotate
+        parent->red = 0;
+        grandparent->red = 1;
+        _lcore_mfunc_priv(rotate_left)(self, grandparent);
       }
     }
   }
@@ -263,95 +314,71 @@ _lcore_mfunc(insert_fixup)(Self *self, _Node *z) {
 }
 
 LCORE_API void
-_lcore_mfunc(delete_fixup)(Self *self, _Node *x) {
-  while (x != self->root && (!x || !x->red)) {
-    if (x == x->parent->left) {
-      _Node *w = x->parent->right;
+_lcore_mfunc_priv(fix_delete)(Self *self, _Node *x, _Node *x_p) {
+  while ((x != self->root) && (!x || x->red == 0)) {
+    if (x == (x_p ? x_p->left : NULL)) {
+      _Node *w = x_p->right;
       if (w && w->red) {
         w->red = 0;
-        x->parent->red = 1;
-        _lcore_mfunc(rotate_left)(self, x->parent);
-        w = x->parent->right;
+        x_p->red = 1;
+        _lcore_mfunc_priv(rotate_left)(self, x_p);
+        w = x_p->right;
       }
+
       if ((!w->left || !w->left->red) && (!w->right || !w->right->red)) {
-        if (w)
-          w->red = 1;
-        x = x->parent;
+        w->red = 1;
+        x = x_p;
+        x_p = x->parent;
       } else {
         if (!w->right || !w->right->red) {
           if (w->left)
             w->left->red = 0;
           w->red = 1;
-          _lcore_mfunc(rotate_right)(self, w);
-          w = x->parent->right;
+          _lcore_mfunc_priv(rotate_right)(self, w);
+          w = x_p->right;
         }
-        if (w)
-          w->red = x->parent->red;
-        x->parent->red = 0;
-        if (w && w->right)
+
+        w->red = x_p->red;
+        x_p->red = 0;
+        if (w->right)
           w->right->red = 0;
-        _lcore_mfunc(rotate_left)(self, x->parent);
+        _lcore_mfunc_priv(rotate_left)(self, x_p);
         x = self->root;
+        break;
       }
     } else {
-      _Node *w = x->parent->left;
+      _Node *w = x_p->left;
       if (w && w->red) {
         w->red = 0;
-        x->parent->red = 1;
-        _lcore_mfunc(rotate_right)(self, x->parent);
-        w = x->parent->left;
+        x_p->red = 1;
+        _lcore_mfunc_priv(rotate_right)(self, x_p);
+        w = x_p->left;
       }
-      if ((!w->right || !w->right->red) && (!w->left || !w->left->red)) {
-        if (w)
-          w->red = 1;
-        x = x->parent;
+
+      if ((!w->left || !w->left->red) && (!w->right || !w->right->red)) {
+        w->red = 1;
+        x = x_p;
+        x_p = x->parent;
       } else {
         if (!w->left || !w->left->red) {
           if (w->right)
             w->right->red = 0;
           w->red = 1;
-          _lcore_mfunc(rotate_left)(self, w);
-          w = x->parent->left;
+          _lcore_mfunc_priv(rotate_left)(self, w);
+          w = x_p->left;
         }
-        if (w)
-          w->red = x->parent->red;
-        x->parent->red = 0;
-        if (w && w->left)
+
+        w->red = x_p->red;
+        x_p->red = 0;
+        if (w->left)
           w->left->red = 0;
-        _lcore_mfunc(rotate_right)(self, x->parent);
+        _lcore_mfunc_priv(rotate_right)(self, x_p);
         x = self->root;
+        break;
       }
     }
   }
+
   if (x)
     x->red = 0;
-}
-
-LCORE_API void
-_lcore_mfunc(transplant)(Self *self, _Node *u, _Node *v) {
-  if (!u->parent)
-    self->root = v;
-  else if (u == u->parent->left)
-    u->parent->left = v;
-  else
-    u->parent->right = v;
-  if (v)
-    v->parent = u->parent;
-}
-
-LCORE_API _Node *
-_lcore_mfunc(minimum)(_Node *node) {
-  while (node->left)
-    node = node->left;
-  return node;
-}
-
-LCORE_API void
-_lcore_mfunc(destroy_recursive)(_Node *node) {
-  if (!node)
-    return;
-  _lcore_mfunc(destroy_recursive)(node->left);
-  _lcore_mfunc(destroy_recursive)(node->right);
-  lcore_drop_fn(node->data);
-  free(node);
 }
