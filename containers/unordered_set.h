@@ -1,4 +1,3 @@
-#include "../libcore.h"
 #include "_lc_templating.h"
 
 #ifndef T
@@ -34,34 +33,33 @@ typedef struct _Node {
 } _Node;
 
 typedef struct {
-  uint size, capacity;
+  size_t size, capacity;
   _Node **buckets;
 } Self;
 
-// clang-format off
-LCORE_API void _lcore_mfunc(init)(Self* self, uint capacity);
-LCORE_API bool _lcore_mfunc(insert)(Self* self, T key);
-LCORE_API bool _lcore_mfunc(contains)(Self* self, T key);
-LCORE_API bool _lcore_mfunc(remove)(Self* self, T key);
-LCORE_API void _lcore_mfunc(rehash)(Self* self, uint new_capacity);
-LCORE_API void _lcore_mfunc(destroy)(Self* self);
-// clang-format on
+// ============== PUBLIC API ==================== //
+// These functions are meant to be used to interact with the vector structure
+// you are NOT supposed to modify the struct memebers directly.
+static inline void _lcore_mfunc(init)(Self *self, size_t capacity);
+static inline bool _lcore_mfunc(insert)(Self *self, T key);
+static inline bool _lcore_mfunc(contains)(Self *self, T key);
+static inline bool _lcore_mfunc(remove)(Self *self, T key);
+static inline void _lcore_mfunc(rehash)(Self *self, size_t new_capacity);
+static inline void _lcore_mfunc(destroy)(Self *self);
 
-LCORE_API void
-_lcore_mfunc(init)(Self *self, uint capacity) {
+static inline void _lcore_mfunc(init)(Self *self, size_t capacity) {
   memset(self, 0, sizeof(*self));
   if (capacity == 0 || (capacity & capacity - 1))
     capacity = 64;
   self->capacity = capacity;
-  self->buckets = lcore_calloc(_Node *, sizeof(_Node *), capacity);
+  self->buckets = lc_calloc(_Node *, sizeof(_Node *), capacity);
 }
 
-LCORE_API bool
-_lcore_mfunc(insert)(Self *self, T key) {
-  if ((f32)self->size / self->capacity >= lcore_max_loadf)
+static inline bool _lcore_mfunc(insert)(Self *self, T key) {
+  if ((float)self->size / self->capacity >= lcore_max_loadf)
     _lcore_mfunc(rehash)(self, self->capacity << 1);
-  u64 h = lcore_hash_fn(key);
-  uint b = h & (self->capacity - 1);
+  uint64_t h = lcore_hash_fn(key);
+  size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
   _Node *prv = NULL;
   while (cur) {
@@ -70,7 +68,7 @@ _lcore_mfunc(insert)(Self *self, T key) {
     prv = cur;
     cur = cur->next;
   }
-  _Node *new_node = lcore_malloc(_Node, sizeof(_Node));
+  _Node *new_node = lc_malloc(_Node, sizeof(_Node));
   if (!new_node)
     return false;
   new_node->next = NULL;
@@ -82,10 +80,9 @@ _lcore_mfunc(insert)(Self *self, T key) {
   return true;
 }
 
-LCORE_API bool
-_lcore_mfunc(contains)(Self *self, T key) {
-  u64 h = lcore_hash_fn(key);
-  uint b = h & (self->capacity - 1);
+static inline bool _lcore_mfunc(contains)(Self *self, T key) {
+  uint64_t h = lcore_hash_fn(key);
+  size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
   while (cur) {
     if (lcore_eq_fn(cur->data, key))
@@ -95,10 +92,9 @@ _lcore_mfunc(contains)(Self *self, T key) {
   return false;
 }
 
-LCORE_API bool
-_lcore_mfunc(remove)(Self *self, T key) {
-  u64 h = lcore_hash_fn(key);
-  uint b = h & (self->capacity - 1);
+static inline bool _lcore_mfunc(remove)(Self *self, T key) {
+  uint64_t h = lcore_hash_fn(key);
+  size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
   _Node *prv = NULL;
   while (cur) {
@@ -118,25 +114,24 @@ _lcore_mfunc(remove)(Self *self, T key) {
   return false;
 }
 
-LCORE_API void
-_lcore_mfunc(rehash)(Self *self, uint new_capacity) {
+static inline void _lcore_mfunc(rehash)(Self *self, size_t new_capacity) {
   if (new_capacity == 0)
     return;
-  _Node **new_buckets = lcore_calloc(_Node *, sizeof(_Node *), new_capacity);
+  _Node **new_buckets = lc_calloc(_Node *, sizeof(_Node *), new_capacity);
   if (!new_buckets)
     return;
   _Node **old_buckets = self->buckets;
-  uint old_capacity = self->capacity;
+  size_t old_capacity = self->capacity;
   self->size = 0;
   self->capacity = new_capacity;
   self->buckets = new_buckets;
-  for (uint i = 0; i < old_capacity; i++) {
+  for (size_t i = 0; i < old_capacity; i++) {
     _Node *cur = old_buckets[i];
     _Node *nxt = NULL;
     while (cur) {
       nxt = cur->next;
-      u64 h = lcore_hash_fn(cur->data);
-      uint b = h & (self->capacity - 1);
+      uint64_t h = lcore_hash_fn(cur->data);
+      size_t b = h & (self->capacity - 1);
       cur->next = self->buckets[b];
       self->buckets[b] = cur;
       cur = nxt;
@@ -145,11 +140,10 @@ _lcore_mfunc(rehash)(Self *self, uint new_capacity) {
   free(old_buckets);
 }
 
-LCORE_API void
-_lcore_mfunc(destroy)(Self *self) {
+static inline void _lcore_mfunc(destroy)(Self *self) {
   if (!self)
     return;
-  for (uint i = 0; i < self->capacity; i++) {
+  for (size_t i = 0; i < self->capacity; i++) {
     _Node *cur = self->buckets[i];
     _Node *to_free = NULL;
     while (cur) {

@@ -1,4 +1,3 @@
-#include "../libcore.h"
 #include "_lc_templating.h"
 
 #ifndef T
@@ -25,51 +24,50 @@
 typedef struct _Node {
   struct _Node *left, *right; // left and right children
   struct _Node *parent;       // parent node
-  u8 red;                     // node color (either red (1) or black (0))
+  uint8_t red;                // node color (either red (1) or black (0))
   T data;                     // node payload
 } _Node;
 
 typedef struct Self {
   _Node *root; // root of the tree
-  usize size;  // number of nodes
+  size_t size; // number of nodes
 } Self;
 
 // ============== PUBLIC API ==================== //
 // These functions are meant to be used to interact with the tree structure
 // you are NOT supposed to modify the struct memebers directly.
 
-LCORE_API void _lcore_mfunc(init)(Self *self);
-LCORE_API void _lcore_mfunc(destroy)(Self *self);
-LCORE_API u8 _lcore_mfunc(insert)(Self *self, T val);
-LCORE_API u8 _lcore_mfunc(remove)(Self *self, T val);
-LCORE_API u8 _lcore_mfunc(contains)(Self *self, T val);
+static inline void _lcore_mfunc(init)(Self *self);
+static inline void _lcore_mfunc(destroy)(Self *self);
+static inline uint8_t _lcore_mfunc(insert)(Self *self, T val);
+static inline uint8_t _lcore_mfunc(remove)(Self *self, T val);
+static inline uint8_t _lcore_mfunc(contains)(Self *self, T val);
 
 // ============= PRIVATE FUNCTIONS ============== //
 // These functions are not meant to be called directly, they are helpers used
 // inside the public API implementation
 
-LCORE_API _Node *_lcore_mfunc_priv(max_node)(_Node *x);
-LCORE_API _Node *_lcore_mfunc_priv(min_node)(_Node *x);
-LCORE_API _Node *_lcore_mfunc_priv(new_node)(T value);
-LCORE_API void _lcore_mfunc_priv(transplant)(Self *self, _Node *x, _Node *y);
-LCORE_API void _lcore_mfunc_priv(rotate_left)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc_priv(rotate_right)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc_priv(fix_insert)(Self *self, _Node *x);
-LCORE_API void _lcore_mfunc_priv(fix_delete)(Self *self, _Node *x, _Node *x_p);
+static inline _Node *_lcore_mfunc_priv(max_node)(_Node *x);
+static inline _Node *_lcore_mfunc_priv(min_node)(_Node *x);
+static inline _Node *_lcore_mfunc_priv(new_node)(T value);
+static inline void _lcore_mfunc_priv(transplant)(Self *self, _Node *x,
+                                                 _Node *y);
+static inline void _lcore_mfunc_priv(rotate_left)(Self *self, _Node *x);
+static inline void _lcore_mfunc_priv(rotate_right)(Self *self, _Node *x);
+static inline void _lcore_mfunc_priv(fix_insert)(Self *self, _Node *x);
+static inline void _lcore_mfunc_priv(fix_delete)(Self *self, _Node *x,
+                                                 _Node *x_p);
 
 // ========== PUBLIC API IMPLEMENTATION ========= //
 
-LCORE_API void
-_lcore_mfunc(init)(Self *self) {
+static inline void _lcore_mfunc(init)(Self *self) {
   memset(self, 0, sizeof(*self));
 }
 
-LCORE_API void
-_lcore_mfunc(destroy)(Self *self) {
+static inline void _lcore_mfunc(destroy)(Self *self) {
 }
 
-LCORE_API u8
-_lcore_mfunc(insert)(Self *self, T val) {
+static inline uint8_t _lcore_mfunc(insert)(Self *self, T val) {
   _Node *cur = self->root;
   _Node *parent = NULL;
 
@@ -102,8 +100,7 @@ _lcore_mfunc(insert)(Self *self, T val) {
   return 1; // Successfully inserted
 }
 
-LCORE_API u8
-_lcore_mfunc(remove)(Self *self, T val) {
+static inline uint8_t _lcore_mfunc(remove)(Self *self, T val) {
   _Node *z = self->root;
   while (z) {
     int c = lcore_cmp_fn(val, z->data);
@@ -121,7 +118,7 @@ _lcore_mfunc(remove)(Self *self, T val) {
   _Node *y = z;
   _Node *x = NULL;
   _Node *x_parent = NULL;
-  u8 y_original_red = y->red;
+  uint8_t y_original_red = y->red;
 
   if (!z->left) {
     x = z->right;
@@ -165,8 +162,7 @@ _lcore_mfunc(remove)(Self *self, T val) {
   return 1;
 }
 
-LCORE_API u8
-_lcore_mfunc(contains)(Self *self, T val) {
+static inline uint8_t _lcore_mfunc(contains)(Self *self, T val) {
   _Node *cur = self->root;
   while (cur) {
     int c = lcore_cmp_fn(cur->data, val);
@@ -179,25 +175,22 @@ _lcore_mfunc(contains)(Self *self, T val) {
 
 // ========= PRIVATE API IMPLEMENTATION ========= //
 
-LCORE_API _Node *
-_lcore_mfunc_priv(max_node)(_Node *x) {
+static inline _Node *_lcore_mfunc_priv(max_node)(_Node *x) {
   _Node *tmp = x;
   while (tmp->right)
     tmp = tmp->right;
   return tmp;
 }
 
-LCORE_API _Node *
-_lcore_mfunc_priv(min_node)(_Node *x) {
+static inline _Node *_lcore_mfunc_priv(min_node)(_Node *x) {
   _Node *tmp = x;
   while (tmp->left)
     tmp = tmp->left;
   return tmp;
 }
 
-LCORE_API _Node *
-_lcore_mfunc_priv(new_node)(T value) {
-  _Node *n = lcore_malloc(_Node, sizeof(_Node));
+static inline _Node *_lcore_mfunc_priv(new_node)(T value) {
+  _Node *n = lc_malloc(_Node, sizeof(_Node));
   if (!n)
     return NULL;
   n->left = n->right = n->parent = NULL;
@@ -206,8 +199,8 @@ _lcore_mfunc_priv(new_node)(T value) {
   return n;
 }
 
-LCORE_API void
-_lcore_mfunc_priv(transplant)(Self *self, _Node *x, _Node *y) {
+static inline void _lcore_mfunc_priv(transplant)(Self *self, _Node *x,
+                                                 _Node *y) {
   if (!x->parent)
     self->root = y;
   else if (x == x->parent->left)
@@ -219,8 +212,7 @@ _lcore_mfunc_priv(transplant)(Self *self, _Node *x, _Node *y) {
     y->parent = x->parent;
 }
 
-LCORE_API void
-_lcore_mfunc_priv(rotate_left)(Self *self, _Node *x) {
+static inline void _lcore_mfunc_priv(rotate_left)(Self *self, _Node *x) {
   _Node *r = x->right;
   x->right = r->left;
   if (x->right)
@@ -236,8 +228,7 @@ _lcore_mfunc_priv(rotate_left)(Self *self, _Node *x) {
   x->parent = r;
 }
 
-LCORE_API void
-_lcore_mfunc_priv(rotate_right)(Self *self, _Node *x) {
+static inline void _lcore_mfunc_priv(rotate_right)(Self *self, _Node *x) {
   _Node *l = x->left;
   x->left = l->right;
   if (x->left)
@@ -253,8 +244,7 @@ _lcore_mfunc_priv(rotate_right)(Self *self, _Node *x) {
   x->parent = l;
 }
 
-LCORE_API void
-_lcore_mfunc_priv(fix_insert)(Self *self, _Node *x) {
+static inline void _lcore_mfunc_priv(fix_insert)(Self *self, _Node *x) {
   while (x != self->root && x->parent && x->parent->red) {
     _Node *parent = x->parent;
     _Node *grandparent = parent->parent;
@@ -313,8 +303,8 @@ _lcore_mfunc_priv(fix_insert)(Self *self, _Node *x) {
   self->root->red = 0;
 }
 
-LCORE_API void
-_lcore_mfunc_priv(fix_delete)(Self *self, _Node *x, _Node *x_p) {
+static inline void _lcore_mfunc_priv(fix_delete)(Self *self, _Node *x,
+                                                 _Node *x_p) {
   while ((x != self->root) && (!x || x->red == 0)) {
     if (x == (x_p ? x_p->left : NULL)) {
       _Node *w = x_p->right;

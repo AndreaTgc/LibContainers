@@ -1,4 +1,3 @@
-#include "../libcore.h"
 #include "_lc_templating.h"
 #include <stdbool.h>
 
@@ -13,45 +12,47 @@
 #define Self lcore_pfx
 
 typedef struct {
-  usize size, capacity;
+  size_t size, capacity;
   T *elements;
 } Self;
 
-// clang-format off
-LCORE_API void _lcore_mfunc(init)(Self *self, usize capacity);
-LCORE_API void _lcore_mfunc(push_back)(Self *self, T value);
-LCORE_API void _lcore_mfunc(resize)(Self *self, usize new_capacity);
-LCORE_API void _lcore_mfunc(insert_at)(Self *self, T value, usize index);
-LCORE_API void _lcore_mfunc(remove_at)(Self* self, usize index);
-LCORE_API void _lcore_mfunc(qsort)(Self* self, int (*cmp)(const T*, const T*));
-LCORE_API void _lcore_mfunc(destroy)(Self* self);
-LCORE_API T    _lcore_mfunc(at)(Self *self, usize index);
-LCORE_API T    _lcore_mfunc(pop_back)(Self *self);
-LCORE_API bool _lcore_mfunc(check_health)(Self* self);
-// clang-format on
+// ============== PUBLIC API ==================== //
+// These functions are meant to be used to interact with the vector structure
+// you are NOT supposed to modify the struct memebers directly.
 
-LCORE_API void
-_lcore_mfunc(init)(Self *self, usize capacity) {
+static inline void _lcore_mfunc(init)(Self *self, size_t capacity);
+static inline void _lcore_mfunc(push_back)(Self *self, T value);
+static inline void _lcore_mfunc(resize)(Self *self, size_t new_capacity);
+static inline void _lcore_mfunc(insert_at)(Self *self, T value, size_t index);
+static inline void _lcore_mfunc(remove_at)(Self *self, size_t index);
+static inline void _lcore_mfunc(qsort)(Self *self, int (*cmp)(const T *, const T *));
+static inline void _lcore_mfunc(destroy)(Self *self);
+static inline T _lcore_mfunc(at)(Self *self, size_t index);
+static inline T _lcore_mfunc(pop_back)(Self *self);
+static inline bool _lcore_mfunc(check_health)(Self *self);
+
+static inline void
+_lcore_mfunc(init)(Self *self, size_t capacity) {
   memset(self, 0, sizeof(*self));
-  self->elements = lcore_calloc(T, sizeof(T), capacity);
+  self->elements = lc_calloc(T, sizeof(T), capacity);
   self->capacity = capacity;
 }
 
-LCORE_API void
+static inline void
 _lcore_mfunc(push_back)(Self *self, T value) {
   if (self->size == self->capacity)
     _lcore_mfunc(resize)(self, self->capacity * 2);
   self->elements[self->size++] = value;
 }
 
-LCORE_API void
-_lcore_mfunc(resize)(Self *self, usize new_capacity) {
+static inline void
+_lcore_mfunc(resize)(Self *self, size_t new_capacity) {
   self->capacity = new_capacity == 0 ? 16 : new_capacity;
   self->elements = (T *)realloc(self->elements, self->capacity * sizeof(T));
 }
 
-LCORE_API void
-_lcore_mfunc(insert_at)(Self *self, T value, usize index) {
+static inline void
+_lcore_mfunc(insert_at)(Self *self, T value, size_t index) {
   if (index >= self->size)
     return;
   if (self->size == self->capacity)
@@ -62,21 +63,21 @@ _lcore_mfunc(insert_at)(Self *self, T value, usize index) {
   self->size++;
 }
 
-LCORE_API void
-_lcore_mfunc(remove_at)(Self *self, usize index) {
+static inline void
+_lcore_mfunc(remove_at)(Self *self, size_t index) {
   void *dst = self->elements + (sizeof(T) * index);
   void *src = self->elements + (sizeof(T) * (index + 1));
   memmove(dst, src, self->size - index - 1);
   self->size--;
 }
 
-LCORE_API void
+static inline void
 _lcore_mfunc(qsort)(Self *self, int (*cmp)(const T *, const T *)) {
   qsort(self->elements, self->size, sizeof(T),
         (int (*)(const void *, const void *))cmp);
 }
 
-LCORE_API void
+static inline void
 _lcore_mfunc(destroy)(Self *self) {
 #ifdef lcore_dropfn
   // this code is required for heap allocated types.
@@ -87,7 +88,7 @@ _lcore_mfunc(destroy)(Self *self) {
   //
   // #define lcore_dropfn(x) free(x)
   // #include "libcore/templates/vector.h"
-  for (usize i = 0; i < self->size; i++) {
+  for (size_t i = 0; i < self->size; i++) {
     lcore_dropfn(self->elements[i]);
   }
 #endif // lcore_dropfn
@@ -95,19 +96,19 @@ _lcore_mfunc(destroy)(Self *self) {
   memset(self, 0, sizeof(*self));
 }
 
-LCORE_API T
-_lcore_mfunc(at)(Self *self, usize index) {
+static inline T
+_lcore_mfunc(at)(Self *self, size_t index) {
   assert(index < self->size);
   return self->elements[index];
 }
 
-LCORE_API T
+static inline T
 _lcore_mfunc(pop_back)(Self *self) {
   assert(self->size > 0);
   return self->elements[--self->size];
 }
 
-LCORE_API bool
+static inline bool
 _lcore_mfunc(check_health)(Self *self) {
   return (self->size <= self->capacity && self->elements != NULL);
 }
