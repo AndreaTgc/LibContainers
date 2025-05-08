@@ -25,11 +25,11 @@
 #endif // lcore_drop_v
 
 #ifndef lcore_pfx
-#define lcore_pfx _lcore_join(_lcore_join(K, V), umap)
+#define lcore_pfx _lc_join(_lc_join(K, V), umap)
 #endif // lcore_pfx
 
 #define Self lcore_pfx
-#define _Node _lcore_join(Self, node)
+#define _Node _lc_join(Self, node)
 
 typedef struct _Node {
   K key;
@@ -43,16 +43,16 @@ typedef struct Self {
 } Self;
 
 // clang-format off
-static inline void _lcore_mfunc(init)(Self* self, size_t capacity);
-static inline void _lcore_mfunc(destroy)(Self* self);
-static inline void _lcore_mfunc(rehash)(Self* self, size_t new_capacity);
-static inline void _lcore_mfunc(set)(Self* self, K key, V value);
-static inline bool _lcore_mfunc(insert)(Self* self, K key, V value);
-static inline bool _lcore_mfunc(remove)(Self* self, K key, V value);
-static inline V*   _lcore_mfunc(find)(Self* self, K key);
+static inline void _lc_mfunc(init)(Self* self, size_t capacity);
+static inline void _lc_mfunc(destroy)(Self* self);
+static inline void _lc_mfunc(rehash)(Self* self, size_t new_capacity);
+static inline void _lc_mfunc(set)(Self* self, K key, V value);
+static inline bool _lc_mfunc(insert)(Self* self, K key, V value);
+static inline bool _lc_mfunc(remove)(Self* self, K key, V value);
+static inline V*   _lc_mfunc(find)(Self* self, K key);
 // clang-format on
 
-static inline void _lcore_mfunc(init)(Self *self, size_t capacity) {
+static inline void _lc_mfunc(init)(Self *self, size_t capacity) {
   if (capacity == 0 || (capacity & capacity - 1) != 0)
     capacity = 64;
   self->capacity = capacity;
@@ -60,7 +60,7 @@ static inline void _lcore_mfunc(init)(Self *self, size_t capacity) {
   self->buckets = lc_calloc(_Node *, sizeof(_Node *), self->capacity);
 }
 
-static inline void _lcore_mfunc(destroy)(Self *self) {
+static inline void _lc_mfunc(destroy)(Self *self) {
   if (!self)
     return;
   for (size_t i = 0; i < self->capacity; i++) {
@@ -78,7 +78,7 @@ static inline void _lcore_mfunc(destroy)(Self *self) {
   memset(self, 0, sizeof(*self));
 }
 
-static inline void _lcore_mfunc(rehash)(Self *self, size_t new_capacity) {
+static inline void _lc_mfunc(rehash)(Self *self, size_t new_capacity) {
   if (new_capacity == 0)
     return;
   _Node **new_buckets = lc_calloc(_Node *, sizeof(_Node *), new_capacity);
@@ -101,15 +101,15 @@ static inline void _lcore_mfunc(rehash)(Self *self, size_t new_capacity) {
   free(old_buckets);
 }
 
-static inline void _lcore_mfunc(set)(Self *self, K key, V value) {
-  V *val = _lcore_mfunc(find)(self, key);
+static inline void _lc_mfunc(set)(Self *self, K key, V value) {
+  V *val = _lc_mfunc(find)(self, key);
   if (!val)
-    _lcore_mfunc(insert)(self, key, value);
+    _lc_mfunc(insert)(self, key, value);
   else
     *val = value;
 }
 
-static inline bool _lcore_mfunc(insert)(Self *self, K key, V value) {
+static inline bool _lc_mfunc(insert)(Self *self, K key, V value) {
   uint64_t h = lcore_hash_fn(key);
   size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
@@ -133,7 +133,7 @@ static inline bool _lcore_mfunc(insert)(Self *self, K key, V value) {
   return true;
 }
 
-static inline bool _lcore_mfunc(remove)(Self *self, K key) {
+static inline bool _lc_mfunc(remove)(Self *self, K key) {
   uint64_t h = lcore_hash_fn(key);
   size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
@@ -155,7 +155,7 @@ static inline bool _lcore_mfunc(remove)(Self *self, K key) {
   return false;
 }
 
-static inline V *_lcore_mfunc(find)(Self *self, K key) {
+static inline V *_lc_mfunc(find)(Self *self, K key) {
   uint64_t h = lcore_hash_fn(key);
   size_t b = h & (self->capacity - 1);
   _Node *cur = self->buckets[b];
